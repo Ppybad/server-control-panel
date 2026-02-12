@@ -16,7 +16,7 @@ Sigue estos pasos para configurar el entorno de desarrollo en tu máquina local.
 1.  **Clonar el Repositorio**
     ```bash
     git clone <url-del-repositorio>
-    cd PanelControlTomcat
+    cd PanelControlTomcat // o la carpeta donde se haya bajado el proyecto server-control-panel
     ```
 
 2.  **Crear Entorno Virtual**
