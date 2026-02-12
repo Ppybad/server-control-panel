@@ -1,0 +1,139 @@
+
+{% extends 'servidores/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0"><i class="fab fa-docker me-2 text-primary"></i>Explorar Contenedores Docker</h4>
+                    <a href="{% url 'lista_servidores' %}" class="btn btn-outline-secondary btn-sm">Volver al Panel</a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if not connected %}
+                <!-- Tabs de Conexión -->
+                <ul class="nav nav-tabs mb-3" id="connTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="ssh-tab" data-bs-toggle="tab" data-bs-target="#ssh-panel" type="button" role="tab">Remoto (SSH)</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="local-tab" data-bs-toggle="tab" data-bs-target="#local-panel" type="button" role="tab">Local (Este Equipo)</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="connTabsContent">
+                    <!-- Panel SSH -->
+                    <div class="tab-pane fade show active" id="ssh-panel" role="tabpanel">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Ingresa los datos de conexión SSH para buscar contenedores Docker en el servidor remoto.
+                        </div>
+                        <form method="post" class="row g-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="connection_mode" value="ssh">
+                            <div class="col-md-6">
+                                <label class="form-label">Dirección IP / Host</label>
+                                <input type="text" name="ip" class="form-control" placeholder="Ej: 192.168.1.50" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Puerto SSH</label>
+                                <input type="number" name="port" class="form-control" placeholder="22" value="22">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Usuario</label>
+                                <input type="text" name="user" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contraseña</label>
+                                <input type="password" name="password" class="form-control" required>
+                            </div>
+                            <div class="col-12 text-end mt-4">
+                                <button type="submit" name="connect" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>Buscar Remoto
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Panel Local -->
+                    <div class="tab-pane fade" id="local-panel" role="tabpanel">
+                        <div class="alert alert-secondary mt-3">
+                            <i class="fas fa-desktop me-2"></i>Buscar contenedores Docker ejecutándose en <strong>este servidor</strong> (donde está instalado el panel).
+                            <br><small class="text-muted">Asegúrate de que Docker esté instalado y corriendo en esta máquina.</small>
+                        </div>
+                        <form method="post" class="text-center py-4">
+                            {% csrf_token %}
+                            <input type="hidden" name="connection_mode" value="local">
+                            <button type="submit" name="connect" class="btn btn-success btn-lg">
+                                <i class="fab fa-docker me-2"></i>Explorar Docker Local
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                {% else %}
+                
+                <!-- Lista de Contenedores -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-secondary">Contenedores encontrados en <strong>{{ ip }}</strong></h5>
+                    <form method="get" action="">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-sync-alt me-1"></i>Nueva Búsqueda
+                        </button>
+                    </form>
+                </div>
+
+                {% if contenedores %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombres</th>
+                                <th>Imagen</th>
+                                <th>Estado</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in contenedores %}
+                            <tr>
+                                <td><code class="text-muted">{{ c.id|slice:":12" }}</code></td>
+                                <td class="fw-bold">{{ c.nombre }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ c.imagen }}</span></td>
+                                <td>
+                                    {% if "Up" in c.estado %}
+                                    <span class="badge bg-success">Activo</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Detenido</span>
+                                    {% endif %}
+                                    <small class="text-muted d-block">{{ c.estado }}</small>
+                                </td>
+                                <td>
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="container_name" value="{{ c.nombre }}">
+                                        <input type="hidden" name="container_image" value="{{ c.imagen }}">
+                                        <button type="submit" name="add_container" class="btn btn-sm btn-success">
+                                            <i class="fas fa-plus me-1"></i>Agregar
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>No se encontraron contenedores o Docker no está corriendo en este servidor.
+                </div>
+                {% endif %}
+                
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

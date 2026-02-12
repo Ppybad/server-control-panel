@@ -1,0 +1,187 @@
+
+{% extends 'servidores/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <h2 class="mb-4 text-secondary"><i class="fas fa-book me-2"></i>Documentación Técnica</h2>
+        
+        <!-- Sección Docker -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-primary"><i class="fab fa-docker me-2"></i>Comandos Docker (Linux)</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Estos comandos se ejecutan vía SSH. El usuario configurado debe tener permisos <code>sudo</code>.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%">Acción</th>
+                                <th style="width: 40%">Comando Ejecutado</th>
+                                <th style="width: 40%">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-info text-dark">Buscar / Listar</span></td>
+                                <td><code>echo [pass] | sudo -S docker ps --format ...</code></td>
+                                <td>Lista contenedores activos con ID, nombre e imagen.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-secondary">Verificar Estado</span></td>
+                                <td><code>echo [pass] | sudo -S docker ps --filter ...</code></td>
+                                <td>Verifica si un contenedor específico está "Up".</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">Iniciar</span></td>
+                                <td><code>echo [pass] | sudo -S docker start [nombre]</code></td>
+                                <td>Inicia un contenedor detenido.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">Detener</span></td>
+                                <td><code>echo [pass] | sudo -S docker stop [nombre]</code></td>
+                                <td>Detiene un contenedor en ejecución.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">Reiniciar</span></td>
+                                <td><code>echo [pass] | sudo -S docker restart [nombre]</code></td>
+                                <td>Reinicia el contenedor.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección Linux Servicios -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark"><i class="fab fa-linux me-2"></i>Servicios Linux (Systemd)</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Para instalaciones nativas de Tomcat. Se ejecutan vía SSH.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%">Acción</th>
+                                <th style="width: 40%">Comando Ejecutado</th>
+                                <th style="width: 40%">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-secondary">Verificar</span></td>
+                                <td><code>systemctl is-active [servicio]</code></td>
+                                <td>Consulta si el servicio está activo.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">Iniciar</span></td>
+                                <td><code>sudo systemctl start [servicio]</code></td>
+                                <td>Arranca el servicio del sistema.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">Detener</span></td>
+                                <td><code>sudo systemctl stop [servicio]</code></td>
+                                <td>Detiene el servicio.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">Reiniciar</span></td>
+                                <td><code>sudo systemctl restart [servicio]</code></td>
+                                <td>Reinicia el servicio.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección Windows -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-primary"><i class="fab fa-windows me-2"></i>Servicios Windows (WinRM)</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Comandos ejecutados vía WinRM (Remoto) usando PowerShell.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%">Acción</th>
+                                <th style="width: 40%">Comando PowerShell</th>
+                                <th style="width: 40%">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-secondary">Verificar</span></td>
+                                <td><code>Get-Service -Name '[servicio]'</code></td>
+                                <td>Obtiene el objeto de servicio y su estado.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">Iniciar</span></td>
+                                <td><code>Start-Service -InputObject $service</code></td>
+                                <td>Inicia el servicio de Windows.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">Detener</span></td>
+                                <td><code>Stop-Service -InputObject $service -Force</code></td>
+                                <td>Detiene forzosamente el servicio.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">Reiniciar</span></td>
+                                <td><code>Restart-Service -InputObject $service -Force</code></td>
+                                <td>Reinicia el servicio.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección Local -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-info"><i class="fas fa-laptop-code me-2"></i>Servicios Locales (Este Equipo)</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Gestión directa sobre la máquina donde corre el panel. Requiere permisos de Administrador.</p>
+                <div class="alert alert-info py-2 small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>Nota:</strong> Para procesos Java lanzados manualmente (IDEs), solo se permite la acción <strong>Detener</strong> usando el PID.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%">Contexto</th>
+                                <th style="width: 40%">Comando / Lógica</th>
+                                <th style="width: 40%">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-primary">Descubrimiento</span></td>
+                                <td><code>Get-CimInstance Win32_Process ...</code></td>
+                                <td>Busca procesos <code>java.exe</code> con argumentos de Tomcat (catalina.base).</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-secondary">Servicios Win</span></td>
+                                <td><code>Get-Service | Where-Object ...</code></td>
+                                <td>Busca servicios instalados que contengan "Tomcat" en el nombre.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">Detener PID</span></td>
+                                <td><code>Stop-Process -Id [PID] -Force</code></td>
+                                <td>Mata un proceso específico detectado por su ID.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

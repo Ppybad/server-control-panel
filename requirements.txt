@@ -1,0 +1,4 @@
+Django>=5.0
+paramiko>=3.0
+pywinrm>=0.4
+requests>=2.30
