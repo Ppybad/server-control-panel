@@ -19,3 +19,4 @@ env/
 # IDEs
 .vscode/
 .idea/
+.trae/
