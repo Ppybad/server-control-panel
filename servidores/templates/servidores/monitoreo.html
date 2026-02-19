@@ -1,0 +1,209 @@
+{% extends 'servidores/base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0"><i class="fas fa-chart-line me-2 text-info"></i>Monitoreo SNMP: {{ servidor.nombre }}</h4>
+                <div>
+                    <span class="badge bg-secondary me-2">{{ servidor.ip_host }}</span>
+                    <a href="{% url 'navegacion' %}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                </div>
+            </div>
+            <div class="card-body">
+                
+                <div id="snmp-error" class="alert alert-danger d-none"></div>
+                <div id="demo-warning" class="alert alert-warning d-none">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-robot me-2"></i><strong>Modo Simulación Activo:</strong> No se pudo conectar al servidor real (<span id="demo-reason"></span>). Se muestran datos aleatorios.
+                        </div>
+                        <button class="btn btn-sm btn-outline-dark" type="button" data-bs-toggle="collapse" data-bs-target="#snmpHelp" aria-expanded="false" aria-controls="snmpHelp">
+                            <i class="fas fa-question-circle me-1"></i>Ver Solución
+                        </button>
+                    </div>
+                    
+                    <div class="collapse mt-3" id="snmpHelp">
+                        <div class="card card-body bg-light border-warning">
+                            <h6 class="fw-bold"><i class="fas fa-tools me-2"></i>Configuración Requerida en el Servidor Remoto ({{ servidor.ip_host }})</h6>
+                            <hr class="my-2">
+                            <ol class="mb-0 small">
+                                <li class="mb-2">
+                                    <strong>Firewall de Windows:</strong> Asegúrate de que haya una regla de entrada que permita <code>UDP Puerto 161</code>.
+                                </li>
+                                <li>
+                                    <strong>Servicio SNMP > Seguridad:</strong>
+                                    <ul class="mt-1">
+                                        <li>Ve a <code>services.msc</code> > Servicio SNMP > Propiedades > Pestaña Seguridad.</li>
+                                        <li>Asegúrate de que la comunidad <code>{{ servidor.snmp_community }}</code> esté en la lista "Nombres de comunidad aceptados" con permisos <strong>READ ONLY</strong>.</li>
+                                        <li>Asegúrate de que "Aceptar paquetes SNMP de estos hosts" incluya tu IP o esté marcado <strong>"Aceptar paquetes SNMP de cualquier host"</strong>.</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row text-center mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="text-muted">Uptime</h6>
+                                <h3 id="uptime-val" class="fw-bold">--</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="text-muted">Información del Sistema</h6>
+                                <p id="sys-descr" class="mb-0 small text-truncate">--</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">Uso de CPU (%)</div>
+                            <div class="card-body">
+                                <canvas id="cpuChart"></canvas>
+                            </div>
+                            <div class="card-footer bg-white text-center">
+                                <h2 id="cpu-val" class="text-primary fw-bold">0%</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">Uso de Memoria RAM (MB)</div>
+                            <div class="card-body">
+                                <canvas id="ramChart"></canvas>
+                            </div>
+                            <div class="card-footer bg-white text-center">
+                                <span id="ram-val" class="text-success fw-bold">0 / 0 MB</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctxCpu = document.getElementById('cpuChart').getContext('2d');
+        const ctxRam = document.getElementById('ramChart').getContext('2d');
+
+        // Configuración inicial Chart CPU (Gauge style simulated with Doughnut)
+        const cpuChart = new Chart(ctxCpu, {
+            type: 'doughnut',
+            data: {
+                labels: ['Uso', 'Libre'],
+                datasets: [{
+                    data: [0, 100],
+                    backgroundColor: ['#36a2eb', '#e9ecef'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                circumference: 180,
+                rotation: -90,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+
+        // Configuración inicial Chart RAM (Barra)
+        const ramChart = new Chart(ctxRam, {
+            type: 'bar',
+            data: {
+                labels: ['Memoria'],
+                datasets: [
+                    {
+                        label: 'Usada',
+                        data: [0],
+                        backgroundColor: '#ff6384'
+                    },
+                    {
+                        label: 'Libre',
+                        data: [0],
+                        backgroundColor: '#4bc0c0'
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                scales: {
+                    x: { stacked: true, max: 100 },
+                    y: { stacked: true }
+                },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        function fetchData() {
+            fetch("{% url 'monitor_snmp_host' host_id %}?json=1")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('snmp-error').textContent = data.error;
+                        document.getElementById('snmp-error').classList.remove('d-none');
+                        return;
+                    } else {
+                        document.getElementById('snmp-error').classList.add('d-none');
+                    }
+
+                    // Demo Mode Handling
+                    if (data.is_demo) {
+                        document.getElementById('demo-warning').classList.remove('d-none');
+                        document.getElementById('demo-reason').textContent = data.error_real || 'Timeout';
+                    } else {
+                        document.getElementById('demo-warning').classList.add('d-none');
+                    }
+
+                    // Update UI Texts
+                    document.getElementById('uptime-val').textContent = data.uptime || '--';
+                    document.getElementById('sys-descr').textContent = data.sys_descr || '--';
+                    document.getElementById('sys-descr').title = data.sys_descr || '';
+                    
+                    // Update CPU
+                    const cpu = Math.round(data.cpu_load || 0);
+                    document.getElementById('cpu-val').textContent = cpu + '%';
+                    cpuChart.data.datasets[0].data = [cpu, 100 - cpu];
+                    cpuChart.data.datasets[0].backgroundColor = [
+                        cpu > 80 ? '#ff6384' : (cpu > 50 ? '#ffce56' : '#36a2eb'), 
+                        '#e9ecef'
+                    ];
+                    cpuChart.update();
+
+                    // Update RAM
+                    const total = data.ram_total || 1;
+                    const used = data.ram_used || 0;
+                    const free = total - used;
+                    
+                    document.getElementById('ram-val').textContent = `${Math.round(used)} / ${Math.round(total)} MB`;
+                    
+                    ramChart.data.datasets[0].data = [used];
+                    ramChart.data.datasets[1].data = [free];
+                    ramChart.options.scales.x.max = total;
+                    ramChart.update();
+                })
+                .catch(err => console.error('Error fetching SNMP data:', err));
+        }
+
+        // Fetch inicial y polling cada 5s
+        fetchData();
+        setInterval(fetchData, 5000);
+    });
+</script>
+{% endblock %}

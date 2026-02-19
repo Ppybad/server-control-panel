@@ -1,0 +1,907 @@
+{% extends 'servidores/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <h2 class="mb-3 text-secondary"><i class="fas fa-sitemap me-2"></i>Navegación avanzada</h2>
+        <button class="btn btn-sm btn-outline-primary mb-3"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#forms-section"
+                aria-expanded="false"
+                aria-controls="forms-section">
+            <i class="fas fa-plus-circle me-1"></i>Mostrar / ocultar formularios
+        </button>
+    </div>
+    <div class="col-12 mb-3">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+    <div class="collapse" id="forms-section">
+    <div class="d-flex justify-content-end mb-2">
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-secondary active" id="toggle-form-host">Host</button>
+            <button type="button" class="btn btn-outline-secondary active" id="toggle-form-instancia">Instancia</button>
+        </div>
+    </div>
+    <div class="row" id="forms-row">
+    <div class="col-md-6 mb-4" id="col-form-host">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-primary"><i class="fas fa-network-wired me-2"></i>Registrar Host</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ host_form.nombre.label }}</label>
+                        {{ host_form.nombre }}
+                        {% if host_form.nombre.errors %}
+                        <div class="alert alert-danger mt-1 py-1 px-2">
+                            {{ host_form.nombre.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ host_form.ip_host.label }}</label>
+                        {{ host_form.ip_host }}
+                        {% if host_form.ip_host.errors %}
+                        <div class="alert alert-danger mt-1 py-1 px-2">
+                            {{ host_form.ip_host.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.sistema_operativo.label }}</label>
+                            {{ host_form.sistema_operativo }}
+                            {% if host_form.sistema_operativo.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.sistema_operativo.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.tipo_conexion.label }}</label>
+                            {{ host_form.tipo_conexion }}
+                            {% if host_form.tipo_conexion.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.tipo_conexion.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.puerto_conexion.label }}</label>
+                            {{ host_form.puerto_conexion }}
+                            {% if host_form.puerto_conexion.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.puerto_conexion.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6"></div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.usuario.label }}</label>
+                            {{ host_form.usuario }}
+                            {% if host_form.usuario.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.usuario.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.password.label }}</label>
+                            {{ host_form.password }}
+                            {% if host_form.password.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.password.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label fw-bold">{{ host_form.notas.label }}</label>
+                        {{ host_form.notas }}
+                        {% if host_form.notas.errors %}
+                        <div class="alert alert-danger mt-1 py-1 px-2">
+                            {{ host_form.notas.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="text-end mt-4">
+                        <button type="submit" name="submit_host" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Guardar Host
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4" id="col-form-instancia">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-success"><i class="fas fa-cubes me-2"></i>Agregar Instancia al Host</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ instancia_form.host.label }}</label>
+                            {{ instancia_form.host }}
+                            {% if instancia_form.host.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ instancia_form.host.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ instancia_form.tipo_servicio.label }}</label>
+                            <div class="input-group">
+                                {{ instancia_form.tipo_servicio }}
+                                <button type="button" class="btn btn-outline-primary" id="btn-scan-host">
+                                    <i class="fas fa-search me-1"></i> Detectar
+                                </button>
+                            </div>
+                            <div class="form-text">Elige qué servicio detectar (Tomcat o Docker).</div>
+                            {% if instancia_form.tipo_servicio.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ instancia_form.tipo_servicio.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div id="scan-results" class="list-group mb-3" style="max-height: 220px; overflow-y: auto;"></div>
+                    <div class="mt-2 mb-1 d-flex align-items-center">
+                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#instancia-advanced"
+                                aria-expanded="false" aria-controls="instancia-advanced">
+                            Opciones avanzadas
+                        </button>
+                        <span class="text-muted ms-2 small">Tipo de despliegue (normalmente auto-detectado).</span>
+                    </div>
+                    <div class="collapse" id="instancia-advanced">
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">{{ instancia_form.tipo_instalacion.label }}</label>
+                                {{ instancia_form.tipo_instalacion }}
+                                {% if instancia_form.tipo_instalacion.errors %}
+                                <div class="alert alert-danger mt-1 py-1 px-2">
+                                    {{ instancia_form.tipo_instalacion.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 d-none">
+                                {{ instancia_form.puerto_tomcat }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.snmp_community.label }}</label>
+                            {{ host_form.snmp_community }}
+                            {% if host_form.snmp_community.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.snmp_community.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.snmp_port.label }}</label>
+                            {{ host_form.snmp_port }}
+                            {% if host_form.snmp_port.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.snmp_port.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label fw-bold">{{ instancia_form.nombre_servicio.label }}</label>
+                        {{ instancia_form.nombre_servicio }}
+                        {% if instancia_form.nombre_servicio.errors %}
+                        <div class="alert alert-danger mt-1 py-1 px-2">
+                            {{ instancia_form.nombre_servicio.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label fw-bold">{{ instancia_form.observaciones.label }}</label>
+                        {{ instancia_form.observaciones }}
+                        {% if instancia_form.observaciones.errors %}
+                        <div class="alert alert-danger mt-1 py-1 px-2">
+                            {{ instancia_form.observaciones.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="text-end mt-4">
+                        <button type="submit" name="submit_instancia" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Guardar Instancia
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-secondary"><i class="fas fa-list-ul me-2"></i>Resumen de Hosts e Instancias</h5>
+            </div>
+            <div class="card-body">
+                {% if hosts %}
+                <div class="list-group">
+                    {% for h in hosts %}
+                    <div class="list-group-item p-0">
+                        <div class="px-3 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-link text-start text-decoration-none text-dark p-0 flex-grow-1 host-toggle"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#host-body-{{ h.id }}"
+                                        aria-expanded="true"
+                                        aria-controls="host-body-{{ h.id }}">
+                                    <div>
+                                        <div class="fw-bold">
+                                            {{ h.nombre }} <span class="text-muted">({{ h.ip_host }})</span>
+                                            <i class="fas fa-chevron-down ms-2 small host-toggle-icon"></i>
+                                        </div>
+                                        <div class="small text-muted">
+                                            {{ h.get_sistema_operativo_display }} · {{ h.get_tipo_conexion_display }}
+                                            {% if h.puerto_conexion %} · Puerto {{ h.puerto_conexion }}{% endif %}
+                                        </div>
+                                    </div>
+                                </button>
+                                <div class="text-end ms-3">
+                                    <span class="badge bg-light text-dark d-block mb-1">{{ h.instancias.count }} instancias</span>
+                                    <a href="{% url "monitor_snmp_host" h.id %}"
+                                       class="btn btn-sm btn-outline-secondary"
+                                       title="Monitoreo SNMP">
+                                        <i class="fas fa-chart-line"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#editHostModal"
+                                            data-action="{% url 'editar_host' h.id %}"
+                                            data-nombre="{{ h.nombre|escape }}"
+                                            data-ip="{{ h.ip_host }}"
+                                            data-so="{{ h.sistema_operativo }}"
+                                            data-conexion="{{ h.tipo_conexion }}"
+                                            data-puerto="{{ h.puerto_conexion }}"
+                                            data-usuario="{{ h.usuario }}"
+                                            data-password="{{ h.password }}"
+                                            data-notas="{{ h.notas }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <a href="{% url 'eliminar_host' h.id %}" class="btn btn-sm btn-outline-danger"
+                                       data-confirm="true"
+                                       data-confirm-variant="danger"
+                                       data-confirm-title="Eliminar host"
+                                       data-confirm-message="¿Eliminar el host {{ h.nombre }} y todas sus instancias?">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="host-body-{{ h.id }}" class="collapse show host-collapse border-top" data-host-id="{{ h.id }}">
+                            {% if h.instancias.all %}
+                            <ul class="mt-2 mb-2 small px-3">
+                                {% for inst in h.instancias.all %}
+                                <li class="d-flex justify-content-between align-items-center py-1">
+                                    <div>
+                                        <strong>{{ inst.nombre_servicio }}</strong>
+                                        ({{ inst.get_tipo_instalacion_display }})
+                                        <div class="mt-1">
+                                            {% if inst.estado == 'Activo' %}
+                                                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Activo</span>
+                                            {% elif inst.estado == 'Inactivo' or inst.estado == 'Detenido' %}
+                                                <span class="badge bg-danger"><i class="fas fa-stop me-1"></i>Detenido</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark"><i class="fas fa-question me-1"></i>{{ inst.estado }}</span>
+                                            {% endif %}
+                                        {% if inst.ultimo_check %}
+                                                <span class="text-muted ms-2 small">{{ inst.ultimo_check|date:"d/m/Y H:i" }}</span>
+                                            {% endif %}
+                                        </div>
+                                        {% if inst.mensaje_error %}
+                                        <div class="mt-1">
+                                            <small class="text-danger" title="{{ inst.mensaje_error }}">
+                                                <i class="fas fa-exclamation-circle"></i> Error de conexión
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" title="Editar" data-bs-toggle="modal" data-bs-target="#editInstModal"
+                                                data-action="{% url 'editar_instancia' inst.id %}"
+                                                data-host="{{ inst.host.id }}"
+                                                data-tipo-servicio="{{ inst.tipo_servicio }}"
+                                                data-tipo-inst="{{ inst.tipo_instalacion }}"
+                                                data-nombre="{{ inst.nombre_servicio }}"
+                                                data-puerto="{{ inst.puerto_tomcat }}"
+                                                data-obs="{{ inst.observaciones|default_if_none:'' }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% if inst.nombre_servicio|slice:":4" == 'PID:' %}
+                                        <button type="button" class="btn btn-outline-success" title="Para procesos detectados solo se permite Detener" disabled>
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                        {% else %}
+                                            {% if inst.estado == 'Activo' %}
+                                            <button type="button" class="btn btn-outline-success" title="Ya está iniciado" disabled>
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            {% else %}
+                                            <a href="{% url 'controlar_instancia' inst.id 'start' %}"
+                                               class="btn btn-outline-success" title="Iniciar">
+                                                <i class="fas fa-play"></i>
+                                            </a>
+                                            {% endif %}
+                                        {% endif %}
+                                        {% if inst.estado == 'Detenido' or inst.estado == 'Inactivo' %}
+                                        <button type="button" class="btn btn-outline-danger" title="Ya está detenido" disabled>
+                                            <i class="fas fa-stop"></i>
+                                        </button>
+                                        {% else %}
+                                        {% if inst.nombre_servicio|slice:":4" == 'PID:' %}
+                                            <a href="{% url 'controlar_instancia' inst.id 'stop' %}"
+                                               class="btn btn-outline-danger"
+                                               data-confirm="true"
+                                               data-confirm-variant="danger"
+                                               data-confirm-title="Detener proceso"
+                                               data-confirm-message="Esta instancia es un proceso detectado (por ejemplo desde un IDE o servidor externo). Solo se permitirá detenerlo desde el panel y deberás iniciarlo manualmente desde tu entorno. ¿Deseas detener este proceso?">
+                                                <i class="fas fa-stop"></i>
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'controlar_instancia' inst.id 'stop' %}"
+                                               class="btn btn-outline-danger"
+                                               data-confirm="true"
+                                               data-confirm-variant="danger"
+                                               data-confirm-title="Detener instancia"
+                                               data-confirm-message="¿Detener la instancia {{ inst.nombre_servicio }}?">
+                                                <i class="fas fa-stop"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% endif %}
+                                        <a href="{% url 'controlar_instancia' inst.id 'restart' %}"
+                                           class="btn btn-outline-warning"
+                                           data-confirm="true"
+                                           data-confirm-variant="warning"
+                                           data-confirm-title="Reiniciar instancia"
+                                           data-confirm-message="¿Reiniciar la instancia {{ inst.nombre_servicio }}?">
+                                            <i class="fas fa-redo"></i>
+                                        </a>
+                                        <a href="{% url 'verificar_instancia' inst.id %}"
+                                           class="btn btn-outline-secondary" title="Verificar estado">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </a>
+                                        <a href="{% url 'eliminar_instancia' inst.id %}"
+                                           class="btn btn-outline-danger"
+                                           data-confirm="true"
+                                           data-confirm-variant="danger"
+                                           data-confirm-title="Eliminar instancia"
+                                           data-confirm-message="¿Eliminar la instancia {{ inst.nombre_servicio }}?">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            <div class="px-3 py-2 text-muted small">
+                                No hay instancias registradas para este host.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">Aún no hay hosts registrados en este nuevo flujo.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="editHostModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Host</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="editHostForm" action="#">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Nombre</label>
+                        <input class="form-control" name="nombre" id="eh-nombre">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Host / IP</label>
+                        <input class="form-control" name="ip_host" id="eh-ip">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col">
+                            <label class="form-label">Sistema Operativo</label>
+                            <select class="form-select" name="sistema_operativo" id="eh-so">
+                                <option value="windows">Windows</option>
+                                <option value="linux">Linux</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Tipo de Conexión</label>
+                            <select class="form-select" name="tipo_conexion" id="eh-con">
+                                <option value="winrm">WinRM (Windows Remoto)</option>
+                                <option value="ssh">SSH (Linux / Windows OpenSSH)</option>
+                                <option value="local">Local (Este Equipo)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col">
+                            <label class="form-label">Puerto Conexión</label>
+                            <input class="form-control" type="number" name="puerto_conexion" id="eh-puerto">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Usuario</label>
+                            <input class="form-control" name="usuario" id="eh-usuario">
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col">
+                            <label class="form-label">Contraseña</label>
+                            <input class="form-control" type="password" name="password" id="eh-password">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Notas</label>
+                            <input class="form-control" name="notas" id="eh-notas">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="editInstModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Instancia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="editInstForm" action="#">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Host</label>
+                        <select class="form-select" name="host" id="ei-host">
+                            {% for hh in hosts %}
+                            <option value="{{ hh.id }}">{{ hh.nombre }} ({{ hh.ip_host }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col">
+                            <label class="form-label">Servicio a detectar</label>
+                            <select class="form-select" name="tipo_servicio" id="ei-servicio">
+                                <option value="tomcat">Tomcat</option>
+                                <option value="node" hidden>Node.js</option>
+                                <option value="docker">Docker genérico</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Tipo de despliegue</label>
+                            <select class="form-select" name="tipo_instalacion" id="ei-tipo">
+                                <option value="sistema">Servicio del Sistema (Systemd/Services)</option>
+                                <option value="docker">Contenedor Docker</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-12">
+                            <label class="form-label">Nombre del Servicio/Contenedor</label>
+                            <input class="form-control" name="nombre_servicio" id="ei-nombre">
+                        </div>
+                    </div>
+                    <input type="hidden" name="puerto_tomcat" id="ei-puerto">
+                    <div class="mt-2">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" rows="2" name="observaciones" id="ei-obs"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const NAV_SCAN_PROMPT_MS = {{ nav_scan_prompt_ms|default:30000 }};
+    const NAV_SCAN_REQUEST_MS = {{ nav_scan_request_ms|default:100000 }};
+    const scanBtn = document.getElementById('btn-scan-host');
+    const results = document.getElementById('scan-results');
+    const selHost = document.getElementById('id_host');
+    const selTipoServicio = document.getElementById('id_tipo_servicio');
+    const selTipo = document.getElementById('id_tipo_instalacion');
+    const inputNombre = document.getElementById('id_nombre_servicio');
+    const inputPuerto = document.getElementById('id_puerto_tomcat');
+    const scanState = {cancelled: false, controller: null};
+
+
+    
+    const selEditServicio = document.getElementById('ei-servicio');
+    if (selEditServicio) {
+        const optNodeEdit = selEditServicio.querySelector('option[value="node"]');
+        if (optNodeEdit) {
+            optNodeEdit.hidden = true;
+        }
+        if (!selEditServicio.value || selEditServicio.value === 'node') {
+            selEditServicio.value = 'tomcat';
+        }
+    }
+
+    function getCSRFToken() {
+        const name = 'csrftoken=';
+        const decoded = decodeURIComponent(document.cookie || '');
+        const parts = decoded.split(';');
+        for (let i = 0; i < parts.length; i++) {
+            let c = parts[i].trim();
+            if (c.indexOf(name) === 0) return c.substring(name.length, c.length);
+        }
+        return '';
+    }
+
+    function renderItems(items) {
+        results.innerHTML = '';
+        const tipoServicioActual = selTipoServicio ? selTipoServicio.value : 'tomcat';
+        const nodePortAliases = {
+            9001: 'SIPEM',
+            9005: 'SIPEM REST TS',
+            9007: 'Farmacia',
+            4000: 'ISSET Workers'
+        };
+        if (!items || items.length === 0) {
+            if (tipoServicioActual === 'node') {
+                results.innerHTML = '<div class="list-group-item text-muted small">No se detectaron servicios Node.js. Recuerda que solo se muestran procesos activos.</div>';
+            } else {
+                results.innerHTML = '<div class="list-group-item text-muted">No se detectaron servicios.</div>';
+            }
+            return;
+        }
+        if (tipoServicioActual === 'node') {
+            items = (items || []).slice().sort(function(a, b) {
+                function rank(x) {
+                    if (x && x.controlable_node) return 0;
+                    if (x && x.origen_node === 'pm2') return 1;
+                    return 2;
+                }
+                return rank(a) - rank(b);
+            });
+        }
+        if (tipoServicioActual === 'node') {
+            const info = document.createElement('div');
+            info.className = 'list-group-item small text-muted';
+            info.innerHTML = 'Para Node.js: los elementos marcados como <strong>Servicio gestionable</strong> pueden iniciarse y detenerse desde el panel (cuando exista soporte de control). Los marcados como <strong>Proceso detectado (PID)</strong> o <strong>PM2 (no gestionable)</strong> solo se pueden detener y deben iniciarse manualmente desde tu entorno (IDE, scripts, etc.).';
+            results.appendChild(info);
+        }
+        const selectItem = (i, btn) => {
+            if (selTipo) {
+                if (i.tipo_instalacion) {
+                    selTipo.value = i.tipo_instalacion;
+                } else if (selTipoServicio && selTipoServicio.value === 'docker') {
+                    selTipo.value = 'docker';
+                } else {
+                    selTipo.value = 'sistema';
+                }
+            }
+            if (inputNombre) {
+                inputNombre.value = i.nombre;
+            }
+            if (inputPuerto) {
+                inputPuerto.value = i.puerto || 8080;
+            }
+            const adv = document.getElementById('instancia-advanced');
+            if (adv && !adv.classList.contains('show') && typeof bootstrap !== 'undefined') {
+                new bootstrap.Collapse(adv, {toggle: true});
+            }
+            if (btn) {
+                Array.from(results.children).forEach(c => c.classList.remove('active', 'bg-primary', 'text-white'));
+                btn.classList.add('active', 'bg-primary', 'text-white');
+            }
+        };
+        const itemButtons = [];
+        items.forEach(i => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const ya = i.ya_registrado;
+            btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            if (tipoServicioActual === 'node' && i.detalle_node) {
+                btn.title = i.detalle_node;
+            }
+            let rightBadge = `<span class="badge bg-${i.estado==='Activo'?'success':'secondary'}">${i.estado}</span>`;
+            if (ya) {
+                rightBadge = `<span class="badge bg-info text-dark">Ya en panel</span>`;
+            }
+            let mainText = i.display || i.nombre;
+            let subtitle = `${i.nombre} · ${i.estado}`;
+            if (tipoServicioActual === 'node') {
+                // Nombre del servicio como dato principal (en negritas)
+                if (i.nombre) {
+                    mainText = i.nombre;
+                }
+                const partesSub = [];
+                partesSub.push(i.estado);
+                if (i.rol_node === 'api') {
+                    partesSub.push('Node.js API');
+                } else if (i.rol_node === 'worker') {
+                    partesSub.push('Node.js Worker');
+                } else {
+                    partesSub.push('Servicio Node.js');
+                }
+                if (i.origen_node === 'systemd_service' || i.origen_node === 'servicio_windows') {
+                    partesSub.push('Servicio gestionable');
+                } else if (i.origen_node === 'pm2') {
+                    partesSub.push('PM2 (no gestionable)');
+                } else if (i.origen_node === 'proceso_pid') {
+                    partesSub.push('Proceso detectado (PID)');
+                }
+                if (i.rol_node === 'api') {
+                    partesSub.push('Posible API/HTTP');
+                } else if (i.rol_node === 'worker') {
+                    partesSub.push('Posible worker/daemon');
+                }
+                if (i.display && i.display !== i.nombre) {
+                    partesSub.push(i.display);
+                }
+                subtitle = partesSub.join(' · ');
+            }
+            btn.innerHTML = `<div><strong>${mainText}</strong><br><small class="text-muted">${subtitle}</small></div>${rightBadge}`;
+            btn.onclick = function() {
+                if (ya) {
+                    if (window.AsyncTracker && AsyncTracker.notify) {
+                        AsyncTracker.notify('Esta instancia ya está registrada para este host.', 'warning');
+                    } else {
+                        alert('Esta instancia ya está registrada para este host.');
+                    }
+                    return;
+                }
+                selectItem(i, btn);
+            };
+            results.appendChild(btn);
+            itemButtons.push(btn);
+        });
+        if (items.length === 1 && itemButtons.length === 1) {
+            // Autoselección cuando hay un único resultado,
+            // evitando seleccionar la fila de información de Node.js
+            selectItem(items[0], itemButtons[0]);
+        }
+    }
+
+    function scan() {
+        results.innerHTML = `
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Buscando servicios...</div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="scan-continue" tabindex="0" aria-label="Seguir">Seguir</button>
+                    <button type="button" class="btn btn-sm btn-danger" id="scan-cancel" tabindex="0" aria-label="Cancelar">Cancelar</button>
+                </div>
+            </div>
+        </div>`;
+        const hostId = selHost.value;
+        if (!hostId) {
+            results.innerHTML = '<div class="list-group-item text-warning">Selecciona primero un host.</div>';
+            return;
+        }
+        const tipoServicio = selTipoServicio ? selTipoServicio.value : 'tomcat';
+        scanState.cancelled = false;
+        scanState.controller = null;
+        const btnContinue = document.getElementById('scan-continue');
+        const btnCancel = document.getElementById('scan-cancel');
+        if (btnContinue) {
+            btnContinue.addEventListener('click', function() {
+                this.disabled = true;
+                this.classList.add('disabled');
+            });
+            btnContinue.addEventListener('keydown', function(e){
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
+            });
+        }
+        if (btnCancel) {
+            btnCancel.addEventListener('click', function() {
+                scanState.cancelled = true;
+                if (scanState.controller && typeof scanState.controller.abort === 'function') {
+                    scanState.controller.abort();
+                } else {
+                    results.innerHTML = '<div class="list-group-item text-danger">Escaneo cancelado por el usuario.</div>';
+                    if (window.AsyncTracker && AsyncTracker.finishNotify) AsyncTracker.finishNotify(false, null, 'Escaneo cancelado por el usuario');
+                }
+            });
+            btnCancel.addEventListener('keydown', function(e){
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
+            });
+        }
+        const req = window.AsyncTracker ? AsyncTracker.request('{% url "scan_host" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With':'XMLHttpRequest'},
+            body: JSON.stringify({host_id: hostId, tipo_servicio: tipoServicio})
+        }, {timeout: NAV_SCAN_REQUEST_MS, title: 'Explorando host', description: 'Buscando servicios'}) : (function(){
+            const c = new AbortController();
+            scanState.controller = c;
+            return fetch('{% url "scan_host" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With':'XMLHttpRequest'},
+            body: JSON.stringify({host_id: hostId, tipo_servicio: tipoServicio}),
+            signal: c.signal
+        });
+        })();
+        req.then(r => r.json())
+           .then(data => {
+               if (scanState.cancelled) {
+                   if (window.AsyncTracker && AsyncTracker.finishNotify) AsyncTracker.finishNotify(false, null, 'Escaneo cancelado por el usuario');
+                   return;
+               }
+               if (data.error) {
+                   results.innerHTML = `<div class="list-group-item text-danger">Error: ${data.error}</div>`;
+                   if (window.AsyncTracker && AsyncTracker.finishNotify) AsyncTracker.finishNotify(false, null, 'No se pudo explorar el host');
+               } else {
+                   renderItems(data.items || []);
+                   if (window.AsyncTracker && AsyncTracker.finishNotify) AsyncTracker.finishNotify(true, 'Exploración completada', null);
+               }
+           })
+           .catch(err => {
+               if (scanState.cancelled && err && (err.name === 'AbortError' || String(err).toLowerCase().includes('aborted'))) {
+                   results.innerHTML = '<div class="list-group-item text-danger">Escaneo cancelado por el usuario.</div>';
+                   if (window.AsyncTracker && AsyncTracker.finishNotify) AsyncTracker.finishNotify(false, null, 'Escaneo cancelado por el usuario');
+                   return;
+               }
+               const isAbort = err && (err.name === 'AbortError' || String(err).toLowerCase().includes('aborted'));
+               const msg = isAbort ? 'Tiempo de espera agotado (escaneo cancelado por timeout).' : `Error de red: ${err}`;
+               results.innerHTML = `<div class="list-group-item text-danger">${msg}</div>`;
+               if (window.AsyncTracker && AsyncTracker.finishNotify) {
+                    AsyncTracker.finishNotify(false, null, isAbort ? 'Tiempo de espera agotado' : 'Error de red durante la exploración');
+                }
+            });
+    }
+
+    if (scanBtn) scanBtn.addEventListener('click', scan);
+    if (selTipoServicio && selTipo) {
+        selTipoServicio.addEventListener('change', function() {
+            if (this.value === 'docker') {
+                selTipo.value = 'docker';
+            } else {
+                selTipo.value = 'sistema';
+            }
+        });
+    }
+    const hostForm = document.getElementById('editHostForm');
+    document.querySelectorAll('button[data-bs-target="#editHostModal"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            hostForm.action = this.dataset.action || '#';
+            document.getElementById('eh-nombre').value = this.dataset.nombre || '';
+            document.getElementById('eh-ip').value = this.dataset.ip || '';
+            document.getElementById('eh-so').value = this.dataset.so || 'windows';
+            document.getElementById('eh-con').value = this.dataset.conexion || 'winrm';
+            document.getElementById('eh-puerto').value = this.dataset.puerto || '';
+            document.getElementById('eh-usuario').value = this.dataset.usuario || '';
+            document.getElementById('eh-password').value = this.dataset.password || '';
+            document.getElementById('eh-notas').value = this.dataset.notas || '';
+        });
+    });
+    const instForm = document.getElementById('editInstForm');
+    document.querySelectorAll('button[data-bs-target="#editInstModal"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            instForm.action = this.dataset.action || '#';
+            document.getElementById('ei-host').value = this.dataset.host || '';
+            document.getElementById('ei-servicio').value = this.dataset['tipo-servicio'] || 'tomcat';
+            document.getElementById('ei-tipo').value = this.dataset['tipo-inst'] || 'sistema';
+            document.getElementById('ei-nombre').value = this.dataset.nombre || '';
+            document.getElementById('ei-puerto').value = this.dataset.puerto || '';
+            document.getElementById('ei-obs').value = this.dataset.obs || '';
+        });
+    });
+
+    // Toggles de formularios (Host / Instancia)
+    const btnToggleHost = document.getElementById('toggle-form-host');
+    const btnToggleInst = document.getElementById('toggle-form-instancia');
+    const colHost = document.getElementById('col-form-host');
+    const colInst = document.getElementById('col-form-instancia');
+
+    function actualizarLayoutForms() {
+        const hostVisible = !colHost.classList.contains('d-none');
+        const instVisible = !colInst.classList.contains('d-none');
+
+        if (hostVisible && instVisible) {
+            colHost.classList.remove('col-12');
+            colInst.classList.remove('col-12');
+            colHost.classList.add('col-md-6');
+            colInst.classList.add('col-md-6');
+        } else if (hostVisible && !instVisible) {
+            colHost.classList.remove('col-md-6');
+            colHost.classList.add('col-12');
+        } else if (!hostVisible && instVisible) {
+            colInst.classList.remove('col-md-6');
+            colInst.classList.add('col-12');
+        }
+    }
+
+    if (btnToggleHost && colHost && colInst && btnToggleInst) {
+        const keyHost = 'nav_form_host_visible';
+        const keyInst = 'nav_form_inst_visible';
+        const storedHost = localStorage.getItem(keyHost);
+        const storedInst = localStorage.getItem(keyInst);
+        if (storedHost === '0') {
+            colHost.classList.add('d-none');
+            btnToggleHost.classList.remove('active');
+        }
+        if (storedInst === '0') {
+            colInst.classList.add('d-none');
+            btnToggleInst.classList.remove('active');
+        }
+        actualizarLayoutForms();
+        btnToggleHost.addEventListener('click', function() {
+            const hidden = colHost.classList.toggle('d-none');
+            this.classList.toggle('active');
+            localStorage.setItem(keyHost, hidden ? '0' : '1');
+            actualizarLayoutForms();
+        });
+        btnToggleInst.addEventListener('click', function() {
+            const hidden = colInst.classList.toggle('d-none');
+            this.classList.toggle('active');
+            localStorage.setItem(keyInst, hidden ? '0' : '1');
+            actualizarLayoutForms();
+        });
+    }
+
+    const formsSection = document.getElementById('forms-section');
+    if (formsSection && typeof bootstrap !== 'undefined') {
+        const keyForms = 'nav_forms_section_open';
+        const storedForms = localStorage.getItem(keyForms);
+        const formsCollapse = new bootstrap.Collapse(formsSection, {toggle: false});
+        if (storedForms === '1') {
+            formsCollapse.show();
+        }
+        formsSection.addEventListener('shown.bs.collapse', function() {
+            localStorage.setItem(keyForms, '1');
+        });
+        formsSection.addEventListener('hidden.bs.collapse', function() {
+            localStorage.setItem(keyForms, '0');
+        });
+    }
+
+    const hostBodies = document.querySelectorAll('.host-collapse');
+    if (hostBodies.length && typeof bootstrap !== 'undefined') {
+        hostBodies.forEach(function(el) {
+            const hostId = el.dataset.hostId;
+            if (!hostId) return;
+            const key = 'nav_host_open_' + hostId;
+            const saved = localStorage.getItem(key);
+            const c = new bootstrap.Collapse(el, {toggle: false});
+            if (saved === '0') {
+                c.hide();
+            } else {
+                c.show();
+            }
+            el.addEventListener('shown.bs.collapse', function() {
+                localStorage.setItem(key, '1');
+            });
+            el.addEventListener('hidden.bs.collapse', function() {
+                localStorage.setItem(key, '0');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

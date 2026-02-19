@@ -1,0 +1,112 @@
+{% extends 'servidores/base.html' %}
+
+{% block title %}Estado del sistema{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-3 d-flex justify-content-between align-items-center">
+        <h2 class="mb-0"><i class="fas fa-heartbeat me-2 text-danger"></i>Estado del sistema</h2>
+        <button type="button"
+                class="btn btn-outline-primary"
+                id="btn-full-check"
+                data-no-loader="true">
+            <i class="fas fa-sync-alt me-1"></i> Ejecutar diagnóstico completo
+        </button>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-server me-1 text-primary"></i>Servidor Django</span>
+                <span id="srv-status" class="badge bg-secondary">Pendiente</span>
+            </div>
+            <div class="card-body small">
+                <div>HTTP: <span id="srv-http">-</span></div>
+                <div>Tiempo de respuesta: <span id="srv-time">-</span> ms</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-database me-1 text-success"></i>Base de datos</span>
+                <span id="db-status" class="badge bg-secondary">Pendiente</span>
+            </div>
+            <div class="card-body small">
+                <div>Estado: <span id="db-detail">-</span></div>
+                <div>Tiempo de respuesta: <span id="db-time">-</span> ms</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-cloud me-1 text-info"></i>APIs externas</span>
+                <span id="api-status" class="badge bg-secondary">Pendiente</span>
+            </div>
+            <div class="card-body small">
+                <div>Estado: <span id="api-detail">No configuradas</span></div>
+                <div>Tiempo de respuesta: <span id="api-time">-</span> ms</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const btn = document.getElementById('btn-full-check');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+        if (!window.AsyncTracker) return;
+        AsyncTracker.setProgress(10);
+        AsyncTracker.show('Ejecutando comprobaciones de salud','Diagnóstico');
+        const started = Date.now();
+        AsyncTracker.request('{% url "estado_diagnostico" %}', {headers: {'X-Requested-With':'XMLHttpRequest'}}, {timeout:15000, title:'Diagnóstico', description:'Comprobando componentes'})
+            .then(r => r.json())
+            .then(data => {
+                const dur = Date.now() - started;
+                AsyncTracker.setProgress(100);
+                const ok = data && data.ok;
+                if (window.AsyncTracker && AsyncTracker.finishNotify) {
+                    AsyncTracker.finishNotify(ok, 'Diagnóstico completado', 'Error en diagnóstico');
+                }
+                actualizarPanel(data, dur);
+            })
+            .catch(() => {
+                if (window.AsyncTracker && AsyncTracker.finishNotify) {
+                    AsyncTracker.finishNotify(false, null, 'No se pudo completar el diagnóstico');
+                }
+            });
+    });
+    function setBadge(id, status){
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = 'badge';
+        if (status === 'ok') el.classList.add('bg-success');
+        else if (status === 'warn') el.classList.add('bg-warning','text-dark');
+        else el.classList.add('bg-danger');
+        el.textContent = status === 'ok' ? 'OK' : (status === 'warn' ? 'Aviso' : 'Error');
+    }
+    function actualizarPanel(data, totalMs){
+        if (!data) return;
+        if (data.server){
+            setBadge('srv-status', data.server.status);
+            document.getElementById('srv-http').textContent = data.server.http || '-';
+            document.getElementById('srv-time').textContent = data.server.time_ms ?? '-';
+        }
+        if (data.db){
+            setBadge('db-status', data.db.status);
+            document.getElementById('db-detail').textContent = data.db.detail || '-';
+            document.getElementById('db-time').textContent = data.db.time_ms ?? '-';
+        }
+        if (data.apis){
+            setBadge('api-status', data.apis.status);
+            document.getElementById('api-detail').textContent = data.apis.detail || '-';
+            document.getElementById('api-time').textContent = data.apis.time_ms ?? '-';
+        }
+    }
+});
+</script>
+{% endblock %}
+

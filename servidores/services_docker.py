@@ -13,11 +13,13 @@ def listar_contenedores_docker(ip, port, user, password):
         real_port = port if port else 22
         client.connect(ip, port=real_port, username=user, password=password, timeout=10)
         
-        # Opción 1: Pasar password a sudo vía stdin (echo password | sudo -S command)
-        # Esto es más seguro que hardcodear, pero requiere que el usuario tenga permisos sudo
-        cmd = f"echo {password} | sudo -S docker ps -a --format '{{{{.ID}}}}|{{{{.Names}}}}|{{{{.Status}}}}|{{{{.Image}}}}'"
+        # Opción 1: Pasar password a sudo vía stdin de forma segura
+        # Usamos -a para listar TODOS los contenedores (incluidos los detenidos)
+        cmd = "sudo -S docker ps -a --format '{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}'"
         
         stdin, stdout, stderr = client.exec_command(cmd)
+        stdin.write(password + '\n')
+        stdin.flush()
         
         # Sudo -S puede escribir el prompt de password en stderr, así que filtramos eso
         output = stdout.read().decode()
@@ -75,9 +77,11 @@ def controlar_docker(servidor, accion):
         client.connect(servidor.ip_host, port=port, username=servidor.usuario, password=servidor.password, timeout=10)
         
         # Usar sudo -S para pasar password
-        full_cmd = f"echo {servidor.password} | sudo -S docker {docker_action} {container_name}"
+        full_cmd = f"sudo -S docker {docker_action} {container_name}"
         
         stdin, stdout, stderr = client.exec_command(full_cmd)
+        stdin.write(servidor.password + '\n')
+        stdin.flush()
         
         # Leer salida y error
         error = stderr.read().decode()
@@ -112,16 +116,22 @@ def verificar_estado_docker(servidor):
         client.connect(servidor.ip_host, port=port, username=servidor.usuario, password=servidor.password, timeout=5)
         
         # Check if running con sudo -S
-        cmd = f"echo {servidor.password} | sudo -S docker ps --filter 'name={container_name}' --format '{{{{.Status}}}}'"
+        # Usamos -a para detectar si existe pero está detenido
+        cmd = f"sudo -S docker ps -a --filter 'name={container_name}' --format '{{{{.Status}}}}'"
         
         stdin, stdout, stderr = client.exec_command(cmd)
+        stdin.write(servidor.password + '\n')
+        stdin.flush()
+        
         output = stdout.read().decode().strip()
         client.close()
         
         if output and "Up" in output:
             return "Activo", f"Contenedor {container_name} en ejecución ({output})"
+        elif output:
+            return "Detenido", f"Contenedor detenido ({output})"
         else:
-            return "Detenido", "Contenedor no está corriendo"
+            return "Error", "Contenedor no encontrado"
             
     except Exception as e:
         return "Error", f"Fallo verificación: {str(e)}"

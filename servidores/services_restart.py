@@ -132,13 +132,15 @@ def controlar_ssh(servidor, accion):
         
         port = servidor.puerto_conexion if servidor.puerto_conexion else 22
         client.connect(servidor.ip_host, port=port, username=servidor.usuario, password=servidor.password, timeout=10)
-        
-        services = ['tomcat', 'tomcat9', 'tomcat10']
-        cmd_parts = []
-        for svc in services:
-            cmd_parts.append(f"sudo systemctl {systemctl_action} {svc}")
-        
-        full_cmd = " || ".join(cmd_parts)
+        service_name = getattr(servidor, 'nombre_servicio', None)
+        if service_name:
+            full_cmd = f"sudo systemctl {systemctl_action} {service_name}"
+        else:
+            services = ['tomcat', 'tomcat9', 'tomcat10']
+            cmd_parts = []
+            for svc in services:
+                cmd_parts.append(f"sudo systemctl {systemctl_action} {svc}")
+            full_cmd = " || ".join(cmd_parts)
         
         stdin, stdout, stderr = client.exec_command(full_cmd)
         error = stderr.read().decode()

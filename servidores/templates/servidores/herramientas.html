@@ -1,0 +1,139 @@
+{% extends 'servidores/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <h2 class="mb-4 text-secondary"><i class="fas fa-toolbox me-2"></i>Herramientas del Cliente</h2>
+
+    <!-- WinRM TrustedHosts -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+        <h5 class="card-title mb-0 text-dark"><i class="fas fa-user-shield me-2"></i>WinRM TrustedHosts (Cliente)</h5>
+        <button id="btnRefreshTrusted" class="btn btn-sm btn-outline-primary"><i class="fas fa-sync-alt me-1"></i>Refrescar</button>
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-2">
+          Lista de hosts/IPs de confianza del cliente local (máquina donde corre este panel). Requerido para conectar por WinRM usando <em>HTTP</em> a direcciones IP.
+        </p>
+        <div id="trustedAlert" class="alert d-none"></div>
+        <div id="trustedList" class="list-group mb-3"></div>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-8">
+            <label for="inputHost" class="form-label small text-muted">Host/IP objetivo</label>
+            <input id="inputHost" type="text" class="form-control" placeholder="ej. 10.63.17.232">
+          </div>
+          <div class="col-md-4 d-grid">
+            <button id="btnGenerateCmd" class="btn btn-primary mb-2"><i class="fas fa-terminal me-1"></i>Generar comando para este host</button>
+          </div>
+        </div>
+        <div class="row g-2 mt-1">
+          <div class="col-md-4 d-grid">
+            <button id="btnWildcardOn" class="btn btn-outline-danger btn-sm"><i class="fas fa-asterisk me-1"></i>Generar comodín (*)</button>
+          </div>
+          <div class="col-md-4 d-grid">
+            <button id="btnWildcardOff" class="btn btn-outline-secondary btn-sm"><i class="fas fa-ban me-1"></i>Quitar comodín</button>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="alert alert-info small mb-2" id="instructionBox">
+            <i class="fas fa-info-circle me-1"></i>
+            Escribe la IP del servidor remoto y pulsa "Generar comando". Ejecuta el comando en PowerShell como <strong>Administrador</strong> en este equipo cliente. Si aparece "Acceso denegado", la política del dominio debe aplicar el cambio.
+          </div>
+          <pre class="bg-light p-3 rounded small mb-0"><code id="lastCmd">Escribe una IP y pulsa "Generar comando" para ver el comando recomendado.</code></pre>
+        </div>
+        <div class="small text-muted mt-2">
+          <i class="fas fa-info-circle me-1"></i>
+          Si ves <code>*</code>, el cliente permite conectarse a cualquier host (no recomendado).
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.getElementById('btnRefreshTrusted');
+  const list = document.getElementById('trustedList');
+  const alertBox = document.getElementById('trustedAlert');
+  const inputHost = document.getElementById('inputHost');
+  const btnGenerateCmd = document.getElementById('btnGenerateCmd');
+  const btnWildcardOn = document.getElementById('btnWildcardOn');
+  const btnWildcardOff = document.getElementById('btnWildcardOff');
+  const lastCmd = document.getElementById('lastCmd');
+
+  function renderTrusted(data) {
+    list.innerHTML = '';
+    alertBox.className = 'alert d-none';
+    if (data.error) {
+      const msg = String(data.error || '');
+      if (msg.toLowerCase().includes('acceso denegado') || msg.toLowerCase().includes('access is denied')) {
+        alertBox.className = 'alert alert-warning';
+        alertBox.innerHTML = '<i class="fas fa-lock me-1"></i> Windows está bloqueando cambios en TrustedHosts (posible política de grupo o restricción de seguridad). Incluso como Administrador local, esta opción puede estar controlada por políticas. Ejecuta el comando mostrado en PowerShell como administrador; si también falla allí, debe ajustarse desde las políticas del equipo.';
+      } else {
+        alertBox.className = 'alert alert-danger';
+        alertBox.textContent = 'Error: ' + data.error;
+      }
+      return;
+    }
+    const hosts = data.trusted_hosts || [];
+    if (hosts.length === 0) {
+      list.innerHTML = '<div class="list-group-item text-muted">Sin hosts configurados en TrustedHosts.</div>';
+    } else {
+      hosts.forEach(h => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        item.innerHTML = `<span>${h}</span><span class="badge ${h==='*' ? 'bg-danger' : 'bg-secondary'}">${h==='*' ? 'comodín' : 'host'}</span>`;
+        list.appendChild(item);
+      });
+    }
+    if (data.wildcard) {
+      alertBox.className = 'alert alert-warning mt-2';
+      alertBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> El comodín (*) está habilitado en TrustedHosts. Considera restringirlo por seguridad.';
+    }
+  }
+
+  function fetchTrusted() {
+    list.innerHTML = '<div class="list-group-item text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Cargando...</div>';
+    fetch('{% url "trusted_hosts" %}')
+      .then(r => r.json())
+      .then(renderTrusted)
+      .catch(err => {
+        alertBox.className = 'alert alert-danger';
+        alertBox.textContent = 'Error de red: ' + err;
+      });
+  }
+  function generateCommand() {
+    const h = (inputHost.value || '').trim();
+    if (!h) {
+      alertBox.className = 'alert alert-warning';
+      alertBox.textContent = 'Escribe primero la IP o host antes de generar el comando.';
+      return;
+    }
+    const cmd = `Set-Item WSMan:\\localhost\\Client\\TrustedHosts -Value "${h}" -Force`;
+    lastCmd.textContent = cmd;
+    alertBox.className = 'alert alert-info mt-2';
+    alertBox.innerHTML = '<i class="fas fa-terminal me-1"></i> Copia este comando y ejecútalo en PowerShell como <strong>Administrador</strong> en este equipo cliente. Si aparece "Acceso denegado", la configuración debe aplicarse desde las políticas del dominio.';
+  }
+  function generateWildcardOn() {
+    const cmd = 'Set-Item WSMan:\\localhost\\Client\\TrustedHosts -Value "*" -Force';
+    lastCmd.textContent = cmd;
+    alertBox.className = 'alert alert-info mt-2';
+    alertBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Este comando habilita el comodín (*), permitiendo conectarse a <strong>cualquier host</strong> por WinRM desde este cliente. Ejecuta el comando en PowerShell como Administrador solo en entornos de laboratorio o pruebas.';
+  }
+  function generateWildcardOff() {
+    const cmd = 'Set-Item WSMan:\\localhost\\Client\\TrustedHosts -Value "" -Force';
+    lastCmd.textContent = cmd;
+    alertBox.className = 'alert alert-info mt-2';
+    alertBox.innerHTML = '<i class="fas fa-ban me-1"></i> Este comando limpia TrustedHosts, quitando el comodín (*) y cualquier host configurado. Ejecuta el comando en PowerShell como Administrador y luego vuelve a agregar solo los hosts que necesites.';
+  }
+
+  if (btn) {
+    btn.addEventListener('click', fetchTrusted);
+    fetchTrusted();
+  }
+  if (btnGenerateCmd) btnGenerateCmd.addEventListener('click', generateCommand);
+  if (btnWildcardOn) btnWildcardOn.addEventListener('click', generateWildcardOn);
+  if (btnWildcardOff) btnWildcardOff.addEventListener('click', generateWildcardOff);
+});
+</script>
+{% endblock %}

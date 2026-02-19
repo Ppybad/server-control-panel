@@ -97,6 +97,70 @@
             </div>
         </div>
 
+        <!-- Sección SNMP -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-success"><i class="fas fa-network-wired me-2"></i>Monitoreo SNMP</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Lectura de métricas (CPU, RAM, Uptime) usando SNMPv2c. El panel invoca un worker aislado para evitar conflictos de <code>asyncio</code> en Windows.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%">Acción</th>
+                                <th style="width: 40%">Comando Ejecutado</th>
+                                <th style="width: 40%">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-info text-dark">Diagnóstico Rápido</span></td>
+                                <td><code>python diag_snmp.py &lt;IP&gt; &lt;COMUNIDAD&gt;</code></td>
+                                <td>Prueba GET a <code>1.3.6.1.2.1.1.1.0</code> (sysDescr) con timeout y reporte de errores.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-secondary">Worker Manual</span></td>
+                                <td><code>python servidores/snmp_worker.py &lt;IP&gt; &lt;COMUNIDAD&gt; [PUERTO]</code></td>
+                                <td>Ejecuta el worker asíncrono que usa el panel para recolectar métricas.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">Windows: Firewall</span></td>
+                                <td><code>New-NetFirewallRule -DisplayName \"SNMP (UDP 161)\" -Direction Inbound -Protocol UDP -LocalPort 161 -Action Allow</code></td>
+                                <td>Habilita el puerto <strong>161/UDP</strong> en el servidor remoto.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">Windows: SNMP</span></td>
+                                <td><code>Add-WindowsCapability -Online -Name 'SNMP.Client~~~~0.0.1.0'</code></td>
+                                <td>Instala el cliente/servicio SNMP (según edición). Configurar comunidad y hosts en <code>services.msc</code>.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-dark">Linux: Instalar</span></td>
+                                <td><code>sudo apt install snmpd && sudo systemctl restart snmpd</code></td>
+                                <td>Instala y reinicia el servicio. Configurar <code>rocommunity</code> en <code>/etc/snmp/snmpd.conf</code>.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-dark">Linux: Firewall</span></td>
+                                <td><code>sudo ufw allow 161/udp</code></td>
+                                <td>Abre el puerto <strong>161/UDP</strong> en el servidor remoto.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="small text-muted">
+                    <strong>OIDs usados:</strong>
+                    <code>1.3.6.1.2.1.1.1.0</code> (sysDescr),
+                    <code>1.3.6.1.2.1.1.3.0</code> (sysUpTime),
+                    <code>1.3.6.1.2.1.25.3.3.1.2</code> (hrProcessorLoad),
+                    <code>1.3.6.1.2.1.25.2.2.0</code> (hrMemorySize),
+                    <code>1.3.6.1.4.1.2021.4.6.0</code> (memAvailReal).
+                    Si no hay respuesta, la UI activa modo <em>Simulación</em> con guía de solución.
+                </div>
+            </div>
+        </div>
+
         <!-- Sección Windows -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white py-3">
@@ -164,7 +228,7 @@
                             <tr>
                                 <td><span class="badge bg-primary">Descubrimiento</span></td>
                                 <td><code>Get-CimInstance Win32_Process ...</code></td>
-                                <td>Busca procesos <code>java.exe</code> con argumentos de Tomcat (catalina.base).</td>
+                                <td>Busca procesos <code>java.exe</code>/<code>javaw.exe</code> con argumentos de Tomcat (catalina.base).</td>
                             </tr>
                             <tr>
                                 <td><span class="badge bg-secondary">Servicios Win</span></td>
@@ -182,6 +246,49 @@
             </div>
         </div>
 
+        <!-- Sección WinRM TrustedHosts (Comandos) -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark"><i class="fas fa-user-shield me-2"></i>WinRM TrustedHosts (Comandos)</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Comandos base para consultar y establecer TrustedHosts en el cliente Windows.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%">Acción</th>
+                                <th style="width: 40%">Comando PowerShell</th>
+                                <th style="width: 40%">Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-info text-dark">Consultar</span></td>
+                                <td><code>(Get-Item WSMan:\localhost\Client\TrustedHosts).Value</code></td>
+                                <td>Devuelve la lista actual de hosts de confianza.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">Establecer lista</span></td>
+                                <td><code>Set-Item WSMan:\localhost\Client\TrustedHosts -Value "10.63.17.232" -Force</code></td>
+                                <td>Reemplaza la lista con el/los hosts indicados (para varios: "host1,host2").</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">Activar comodín</span></td>
+                                <td><code>Set-Item WSMan:\localhost\Client\TrustedHosts -Value "*" -Force</code></td>
+                                <td>Permite cualquier host (no recomendado).</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="small text-muted">
+                    <i class="fas fa-info-circle me-1"></i> Para una gestión interactiva, usa la sección <strong>Herramientas</strong> en el menú.
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
+
+<script></script>
 {% endblock %}

@@ -121,3 +121,9 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- Navegación: configuración de timeout de escaneo ---
+# Tiempo antes de mostrar el modal de “seguir esperando/cancelar” (ms)
+NAV_SCAN_PROMPT_MS = 12000
+# Timeout total de la solicitud de exploración (ms)
+NAV_SCAN_REQUEST_MS = 100000

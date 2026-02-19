@@ -6,6 +6,11 @@ import sys
 
 def main():
     """Run administrative tasks."""
+    # Configurar política de EventLoop para Windows + Asyncio + SNMP/UDP
+    if sys.platform == 'win32':
+        import asyncio
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'PanelControl.settings')
     try:
         from django.core.management import execute_from_command_line
