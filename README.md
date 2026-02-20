@@ -186,10 +186,10 @@ Permite visualizar métricas básicas (CPU, RAM y Uptime) vía SNMPv2c.
    - En “Aceptar paquetes SNMP de estos hosts”, agregar la IP del panel o marcar “Aceptar paquetes SNMP de cualquier host”.
 
 ### Configuración en el Panel
-- En “Agregar/Editar Servidor”, completar:
-  - Comunidad SNMP.
-  - Puerto UDP (por defecto 161).
-- Accede al monitoreo desde la acción “Monitoreo SNMP” del servidor.
+- En la sección “Navegación” → “Registrar/Editar Host”, completar:
+  - Comunidad SNMP (por defecto `public`).
+  - Puerto UDP (por defecto `161`).
+- Accede al monitoreo desde el botón “Monitoreo SNMP” del host en la tabla de Navegación.
 
 ### Nota
 Si el servidor no responde a SNMP, el panel mostrará las gráficas en modo demostración y un aviso con instrucciones para habilitar SNMP en el destino.
@@ -210,10 +210,9 @@ Esta sección resume cómo está organizado el proyecto (front/back), los modelo
 
 ### Modelado de Datos
 - Modelos en [models.py](file:///d:/proyectosPython/PanelControlTomcat/servidores/models.py):
-  - Host: equipo gestionado; credenciales y tipo de conexión. Relación 1:N con Instancia.
+  - Host: equipo gestionado; credenciales, tipo de conexión y parámetros SNMP. Relación 1:N con Instancia.
   - Instancia: servicio o contenedor asociado a un Host. Campos clave: `tipo_servicio` (tomcat/node/docker), `tipo_instalacion` (sistema/docker), `nombre_servicio` (o `PID:xxxx` para procesos detectados), `puerto_tomcat`.
-  - Servidor: modelo histórico/legacy para vistas clásicas; conserva soporte SNMP y control.
-- Migraciones crean tablas SQLite por defecto; ver carpeta [migrations](file:///d:/proyectosPython/PanelControlTomcat/servidores/migrations/).
+- Migraciones crean tablas SQLite por defecto; ver carpeta [migrations](file:///d:/proyectosPython/PanelControlTomcat/servidores/migrations/). El estado final solo incluye Host e Instancia para la sección Navegación.
 - Integridad:
   - `Instancia.host` tiene `on_delete=CASCADE`, por lo que al eliminar un Host se eliminan sus Instancias.
 

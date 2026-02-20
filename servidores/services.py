@@ -2,6 +2,9 @@ import winrm
 import paramiko
 from django.utils import timezone
 import socket
+import logging
+import os
+import traceback
 
 def decode_winrm_output(bytes_data):
     """
@@ -21,6 +24,31 @@ def decode_winrm_output(bytes_data):
             
     # Si todo falla, usar utf-8 con replace
     return bytes_data.decode('utf-8', errors='replace').strip()
+
+IN_DOCKER = os.path.exists('/.dockerenv')
+
+
+def _resolve_ssh_host(ip):
+    if IN_DOCKER and ip in ['127.0.0.1', 'localhost']:
+        return 'host.docker.internal'
+    return ip
+
+
+def _connect_ssh(client, ip, port, user, password):
+    target_ip = _resolve_ssh_host(ip)
+    logging.getLogger("paramiko").setLevel(logging.DEBUG)
+    kwargs = {
+        'hostname': target_ip,
+        'port': port or 22,
+        'username': user,
+        'password': password,
+        'timeout': 10,
+        'banner_timeout': 20,
+    }
+    if IN_DOCKER:
+        kwargs['allow_agent'] = False
+        kwargs['look_for_keys'] = False
+    client.connect(**kwargs)
 
 def check_tcp_port(ip, port):
     """
@@ -194,9 +222,8 @@ def check_ssh(servidor):
 
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
         port = servidor.puerto_conexion if servidor.puerto_conexion else 22
-        client.connect(servidor.ip_host, port=port, username=servidor.usuario, password=servidor.password, timeout=5)
+        _connect_ssh(client, servidor.ip_host, port, servidor.usuario, servidor.password)
         
         # Intento 1: Systemctl (común en linux modernos)
         # Buscamos tomcat, tomcat9, tomcat10...
@@ -222,6 +249,8 @@ def check_ssh(servidor):
         return "Error", "No se detectó servicio ni proceso Tomcat."
 
     except Exception as e:
+        if not IN_DOCKER:
+            traceback.print_exc()
         return "Error", f"Fallo conexión SSH (Puerto {port}): {str(e)}"
 
 
@@ -302,7 +331,7 @@ def scan_ssh_tomcat(ip, port, user, password):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(ip, port=port or 22, username=user, password=password, timeout=5)
+        _connect_ssh(client, ip, port or 22, user, password)
         names = ['tomcat', 'tomcat9', 'tomcat10']
         items = []
         for name in names:
@@ -356,6 +385,8 @@ def scan_ssh_tomcat(ip, port, user, password):
         client.close()
         return items, None
     except Exception as e:
+        if not IN_DOCKER:
+            traceback.print_exc()
         return [], str(e)
 
 
@@ -654,7 +685,7 @@ def scan_ssh_node(ip, port, user, password):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(ip, port=port or 22, username=user, password=password, timeout=5)
+        _connect_ssh(client, ip, port or 22, user, password)
         prefer = [4000, 9005, 9007, 3000, 8080, 8000, 5000, 80, 8888]
         rows = []
         # 1) pm2 (si existe)
@@ -961,6 +992,8 @@ def scan_ssh_node(ip, port, user, password):
             })
         return items, None
     except Exception as e:
+        if not IN_DOCKER:
+            traceback.print_exc()
         return [], str(e)
 
 def discover_port_by_service_winrm(ip, port, user, password, service_name):
@@ -998,7 +1031,7 @@ def discover_port_by_service_ssh(ip, port, user, password, service_name):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(ip, port=port or 22, username=user, password=password, timeout=5)
+        _connect_ssh(client, ip, port or 22, user, password)
         cmd = f"systemctl show {service_name} -p MainPID --value || echo 0"
         stdin, stdout, stderr = client.exec_command(cmd)
         pid_txt = stdout.read().decode().strip()

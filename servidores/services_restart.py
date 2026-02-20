@@ -1,5 +1,11 @@
 import winrm
 import paramiko
+import logging
+import os
+import traceback
+
+IN_DOCKER = os.path.exists('/.dockerenv')
+
 
 def decode_winrm_output(bytes_data):
     """
@@ -129,9 +135,23 @@ def controlar_ssh(servidor, accion):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
+        logging.getLogger("paramiko").setLevel(logging.DEBUG)
         port = servidor.puerto_conexion if servidor.puerto_conexion else 22
-        client.connect(servidor.ip_host, port=port, username=servidor.usuario, password=servidor.password, timeout=10)
+        target_ip = servidor.ip_host
+        if IN_DOCKER and target_ip in ['127.0.0.1', 'localhost']:
+            target_ip = 'host.docker.internal'
+        kwargs = {
+            'hostname': target_ip,
+            'port': port,
+            'username': servidor.usuario,
+            'password': servidor.password,
+            'timeout': 10,
+            'banner_timeout': 20,
+        }
+        if IN_DOCKER:
+            kwargs['allow_agent'] = False
+            kwargs['look_for_keys'] = False
+        client.connect(**kwargs)
         service_name = getattr(servidor, 'nombre_servicio', None)
         if service_name:
             full_cmd = f"sudo systemctl {systemctl_action} {service_name}"
@@ -153,4 +173,6 @@ def controlar_ssh(servidor, accion):
              return False, f"Error SSH: {error}"
             
     except Exception as e:
+        if not IN_DOCKER:
+            traceback.print_exc()
         return False, f"Fallo conexión SSH (Puerto {port}): {str(e)}"

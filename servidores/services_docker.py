@@ -1,5 +1,33 @@
-
 import paramiko
+import logging
+import os
+import traceback
+
+IN_DOCKER = os.path.exists('/.dockerenv')
+
+
+def _resolve_ssh_host(ip):
+    if IN_DOCKER and ip in ['127.0.0.1', 'localhost']:
+        return 'host.docker.internal'
+    return ip
+
+
+def _connect_ssh(client, ip, port, user, password):
+    target_ip = _resolve_ssh_host(ip)
+    logging.getLogger("paramiko").setLevel(logging.DEBUG)
+    kwargs = {
+        'hostname': target_ip,
+        'port': port or 22,
+        'username': user,
+        'password': password,
+        'timeout': 10,
+        'banner_timeout': 20,
+    }
+    if IN_DOCKER:
+        kwargs['allow_agent'] = False
+        kwargs['look_for_keys'] = False
+    client.connect(**kwargs)
+
 
 def listar_contenedores_docker(ip, port, user, password):
     """
@@ -9,9 +37,8 @@ def listar_contenedores_docker(ip, port, user, password):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
         real_port = port if port else 22
-        client.connect(ip, port=real_port, username=user, password=password, timeout=10)
+        _connect_ssh(client, ip, real_port, user, password)
         
         # Opción 1: Pasar password a sudo vía stdin de forma segura
         # Usamos -a para listar TODOS los contenedores (incluidos los detenidos)
@@ -50,6 +77,8 @@ def listar_contenedores_docker(ip, port, user, password):
         return contenedores, None
             
     except Exception as e:
+        if not IN_DOCKER:
+            traceback.print_exc()
         return None, f"Error conexión SSH: {str(e)}"
 
 def controlar_docker(servidor, accion):
@@ -72,9 +101,9 @@ def controlar_docker(servidor, accion):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
+
         port = servidor.puerto_conexion if servidor.puerto_conexion else 22
-        client.connect(servidor.ip_host, port=port, username=servidor.usuario, password=servidor.password, timeout=10)
+        _connect_ssh(client, servidor.ip_host, port, servidor.usuario, servidor.password)
         
         # Usar sudo -S para pasar password
         full_cmd = f"sudo -S docker {docker_action} {container_name}"
@@ -98,6 +127,8 @@ def controlar_docker(servidor, accion):
              return False, f"Error Docker: {error}"
             
     except Exception as e:
+        if not IN_DOCKER:
+            traceback.print_exc()
         return False, f"Fallo conexión SSH (Puerto {port}): {str(e)}"
 
 def verificar_estado_docker(servidor):
@@ -111,9 +142,9 @@ def verificar_estado_docker(servidor):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        
+
         port = servidor.puerto_conexion if servidor.puerto_conexion else 22
-        client.connect(servidor.ip_host, port=port, username=servidor.usuario, password=servidor.password, timeout=5)
+        _connect_ssh(client, servidor.ip_host, port, servidor.usuario, servidor.password)
         
         # Check if running con sudo -S
         # Usamos -a para detectar si existe pero está detenido
@@ -134,4 +165,6 @@ def verificar_estado_docker(servidor):
             return "Error", "Contenedor no encontrado"
             
     except Exception as e:
+        if not IN_DOCKER:
+            traceback.print_exc()
         return "Error", f"Fallo verificación: {str(e)}"
