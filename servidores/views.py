@@ -17,6 +17,9 @@ import platform
 import json
 import time
 from django.conf import settings
+from django.db import connection, connections
+from pathlib import Path
+import os
 
 
 def limpiar_mensaje_puerto(mensaje):
@@ -143,6 +146,32 @@ def estado_diagnostico(request):
     server = {'status': 'ok', 'http': 200}
     t1 = time.perf_counter()
     db_start = time.perf_counter()
+    selected_mode = None
+    try:
+        p = Path(settings.BASE_DIR) / 'db_mode.txt'
+        if p.exists():
+            selected_mode = (p.read_text(encoding='utf-8').strip().lower() or '')
+    except Exception:
+        selected_mode = None
+    if not selected_mode:
+        selected_mode = (os.getenv('DB_MODE', '').strip().lower() or 'sqlite')
+    alias = 'postgres' if selected_mode == 'postgres' else 'sqlite'
+    cfg = settings.DATABASES.get(alias, {})
+    db_engine = cfg.get('ENGINE', '')
+    db_name = cfg.get('NAME', '')
+    db_host = cfg.get('HOST', '')
+    db_port = cfg.get('PORT', '')
+    search_path = ''
+    current_db = ''
+    try:
+        if 'postgresql' in db_engine:
+            with connections[alias].cursor() as cur:
+                cur.execute("SHOW search_path;")
+                search_path = cur.fetchone()[0]
+                cur.execute("SELECT current_database();")
+                current_db = cur.fetchone()[0]
+    except Exception:
+        pass
     try:
         c = Host.objects.count()
         db_status = {'status': 'ok', 'detail': f'Conectado ({c} hosts)'}
@@ -155,7 +184,15 @@ def estado_diagnostico(request):
     return JsonResponse({
         'ok': db_status.get('status') == 'ok' and server.get('status') == 'ok',
         'server': {'status': server['status'], 'http': server.get('http', '-'), 'time_ms': int((t1 - t0) * 1000)},
-        'db': {'status': db_status['status'], 'detail': db_status.get('detail', ''), 'time_ms': int((db_end - db_start) * 1000)},
+        'db': {
+            'status': db_status['status'],
+            'detail': db_status.get('detail', ''),
+            'engine': db_engine,
+            'target': {'name': str(db_name), 'host': str(db_host), 'port': str(db_port)},
+            'current_database': current_db,
+            'search_path': search_path,
+            'time_ms': int((db_end - db_start) * 1000)
+        },
         'apis': {'status': apis_status['status'], 'detail': apis_status.get('detail', ''), 'time_ms': int((apis_end - apis_start) * 1000)},
     })
 
@@ -163,7 +200,66 @@ def documentacion(request):
     return render(request, 'servidores/documentacion.html')
 
 def herramientas(request):
-    return render(request, 'servidores/herramientas.html')
+    selected_mode = None
+    try:
+        p = Path(settings.BASE_DIR) / 'db_mode.txt'
+        if p.exists():
+            selected_mode = (p.read_text(encoding='utf-8').strip().lower() or '')
+    except Exception:
+        selected_mode = None
+    env_mode = os.getenv('DB_MODE')
+    if not selected_mode:
+        selected_mode = (env_mode or 'sqlite').strip().lower()
+    in_docker = Path('/.dockerenv').exists()
+    trusted_supported = (platform.system() == 'Windows') and (not in_docker)
+    source = 'env' if env_mode else 'file'
+    return render(request, 'servidores/herramientas.html', {
+        'db_mode': 'postgres' if selected_mode == 'postgres' else 'sqlite',
+        'in_docker': in_docker,
+        'db_source': source,
+        'env_mode': (env_mode or '').strip().lower(),
+        'trusted_supported': trusted_supported,
+    })
+
+def config_db(request):
+    if request.method != 'POST':
+        return redirect('herramientas')
+    mode = request.POST.get('db_mode', 'sqlite').strip().lower()
+    if mode not in ['sqlite', 'postgres']:
+        messages.error(request, 'Modo de base de datos inválido.')
+        return redirect('herramientas')
+    env_in_use = bool(os.getenv('DB_MODE'))
+    try:
+        if env_in_use:
+            env_path = Path(settings.BASE_DIR) / '.env'
+            content = ''
+            if env_path.exists():
+                content = env_path.read_text(encoding='utf-8')
+            lines = content.splitlines() if content else []
+            found = False
+            new_lines = []
+            for line in lines:
+                if line.strip().startswith('DB_MODE='):
+                    new_lines.append(f'DB_MODE={"postgres" if mode=="postgres" else "sqlite"}')
+                    found = True
+                else:
+                    new_lines.append(line)
+            if not found:
+                new_lines.append(f'DB_MODE={"postgres" if mode=="postgres" else "sqlite"}')
+            env_path.write_text('\n'.join(new_lines) + ('\n' if new_lines else ''), encoding='utf-8')
+        with open(Path(settings.BASE_DIR) / 'db_mode.txt', 'w', encoding='utf-8') as f:
+            f.write(mode)
+        try:
+            connections.close_all()
+        except Exception:
+            pass
+        if mode == 'postgres':
+            messages.success(request, 'Modo de BD cambiado a PostgreSQL. El cambio aplica en las siguientes solicitudes.')
+        else:
+            messages.success(request, 'Modo de BD cambiado a SQLite. El cambio aplica en las siguientes solicitudes.')
+    except Exception as e:
+        messages.error(request, f'No se pudo guardar la configuración: {e}')
+    return redirect('herramientas')
 
 def navegacion(request):
     host_form = HostForm()

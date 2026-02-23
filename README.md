@@ -61,8 +61,77 @@ Sigue estos pasos para configurar el entorno de desarrollo en tu máquina local.
 ### ⚠️ Nota Importante sobre Servicios Locales
 Si deseas utilizar la funcionalidad de **"Local (Este Equipo)"** para gestionar servicios de Windows o detener procesos en tu propia máquina de desarrollo:
 
-*   Debes ejecutar el servidor de desarrollo **como Administrador**.
-*   Abre tu terminal (PowerShell/CMD) con **"Ejecutar como administrador"** antes de correr `python manage.py runserver`.
+- Debes ejecutar el servidor de desarrollo **como Administrador**.
+- Abre tu terminal (PowerShell/CMD) con **"Ejecutar como administrador"** antes de correr `python manage.py runserver`.
+
+---
+
+## 🐳 Despliegue con Docker (Entorno Servidor)
+
+Esta opción levanta el panel ya contenedor en modo “servidor”, usando PostgreSQL y Redis.
+
+### Prerrequisitos
+
+- Docker Desktop instalado y en ejecución.
+- Puerto `8000` libre en tu máquina (para acceder al panel).
+
+### Levantar el stack
+
+Desde la raíz del proyecto:
+
+```bash
+docker-compose up --build
+```
+
+Esto levanta:
+
+- **web**: contenedor con Django (este panel) escuchando en `0.0.0.0:8000`.
+- **db**: PostgreSQL con base `panelcontrol` (usuario `paneluser`, contraseña `panelpass`).
+- **redis**: Redis para futuras tareas en segundo plano / caché.
+
+Acceso al panel:
+
+- Navegador: `http://localhost:8000`
+
+### Comandos de gestión dentro del contenedor
+
+1. Ver el nombre del contenedor de la app:
+
+```bash
+docker ps
+```
+
+2. Ejecutar comandos Django dentro del contenedor `web` (ejemplos):
+
+```bash
+docker exec -it <nombre-del-contenedor-web> python manage.py createsuperuser
+docker exec -it <nombre-del-contenedor-web> python manage.py migrate
+docker exec -it <nombre-del-contenedor-web> python test_ssh.py <IP> <PUERTO> <USUARIO> <PASSWORD>
+```
+
+### Parar y limpiar
+
+- Detener contenedores (sin borrar datos de Postgres):
+
+```bash
+docker-compose down
+```
+
+- Detener y borrar datos (reiniciar base desde cero):
+
+```bash
+docker-compose down -v
+```
+
+### Limitaciones en modo Docker
+
+Cuando el panel corre dentro de Docker:
+
+- El panel está pensado como **gestor remoto**:
+  - Linux por SSH
+  - Windows por WinRM
+  - Docker remoto vía SSH
+- Las opciones “Local (Este Equipo)” (Tomcat local y Docker local) pueden no estar disponibles o estar limitadas, ya que el contenedor no tiene acceso directo a los servicios ni al binario `docker` del host.
 
 ---
 

@@ -181,24 +181,6 @@
                                 {{ instancia_form.puerto_tomcat }}
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">{{ host_form.snmp_community.label }}</label>
-                            {{ host_form.snmp_community }}
-                            {% if host_form.snmp_community.errors %}
-                            <div class="alert alert-danger mt-1 py-1 px-2">
-                                {{ host_form.snmp_community.errors }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">{{ host_form.snmp_port.label }}</label>
-                            {{ host_form.snmp_port }}
-                            {% if host_form.snmp_port.errors %}
-                            <div class="alert alert-danger mt-1 py-1 px-2">
-                                {{ host_form.snmp_port.errors }}
-                            </div>
-                            {% endif %}
-                        </div>
                     </div>
                     <div class="mt-3">
                         <label class="form-label fw-bold">{{ instancia_form.nombre_servicio.label }}</label>
@@ -260,11 +242,13 @@
                                 </button>
                                 <div class="text-end ms-3">
                                     <span class="badge bg-light text-dark d-block mb-1">{{ h.instancias.count }} instancias</span>
-                                    <a href="{% url "monitor_snmp_host" h.id %}"
+                                    {% if h.servidor_snmp_id %}
+                                    <a href="{% url "monitor_snmp" h.servidor_snmp_id %}"
                                        class="btn btn-sm btn-outline-secondary"
                                        title="Monitoreo SNMP">
                                         <i class="fas fa-chart-line"></i>
                                     </a>
+                                    {% endif %}
                                     <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#editHostModal"
                                             data-action="{% url 'editar_host' h.id %}"
                                             data-nombre="{{ h.nombre|escape }}"
@@ -621,7 +605,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.classList.add('active', 'bg-primary', 'text-white');
             }
         };
-        const itemButtons = [];
         items.forEach(i => {
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -637,35 +620,47 @@ document.addEventListener('DOMContentLoaded', function() {
             let mainText = i.display || i.nombre;
             let subtitle = `${i.nombre} · ${i.estado}`;
             if (tipoServicioActual === 'node') {
-                // Nombre del servicio como dato principal (en negritas)
-                if (i.nombre) {
-                    mainText = i.nombre;
-                }
-                const partesSub = [];
-                partesSub.push(i.estado);
+                // Texto principal más amigable para usuarios de ambiente
+                const partesMain = [];
                 if (i.rol_node === 'api') {
-                    partesSub.push('Node.js API');
+                    partesMain.push('Node.js API');
                 } else if (i.rol_node === 'worker') {
-                    partesSub.push('Node.js Worker');
+                    partesMain.push('Node.js Worker');
                 } else {
-                    partesSub.push('Servicio Node.js');
+                    partesMain.push('Servicio Node.js');
+                }
+                if (i.puerto) {
+                    let alias = nodePortAliases[i.puerto];
+                    if (alias) {
+                        partesMain.push(`${alias} (puerto ${i.puerto})`);
+                    } else {
+                        partesMain.push(`puerto ${i.puerto}`);
+                    }
+                }
+                mainText = partesMain.join(' · ');
+                if (i.puerto) {
+                    let alias = nodePortAliases[i.puerto];
+                    if (alias) {
+                        subtitle += ` · Puerto ${i.puerto} · ${alias}`;
+                    } else {
+                        subtitle += ` · Puerto ${i.puerto}`;
+                    }
                 }
                 if (i.origen_node === 'systemd_service' || i.origen_node === 'servicio_windows') {
-                    partesSub.push('Servicio gestionable');
+                    subtitle += ' · Servicio gestionable';
                 } else if (i.origen_node === 'pm2') {
-                    partesSub.push('PM2 (no gestionable)');
+                    subtitle += ' · PM2 (no gestionable)';
                 } else if (i.origen_node === 'proceso_pid') {
-                    partesSub.push('Proceso detectado (PID)');
+                    subtitle += ' · Proceso detectado (PID)';
                 }
                 if (i.rol_node === 'api') {
-                    partesSub.push('Posible API/HTTP');
+                    subtitle += ' · Posible API/HTTP';
                 } else if (i.rol_node === 'worker') {
-                    partesSub.push('Posible worker/daemon');
+                    subtitle += ' · Posible worker/daemon';
                 }
                 if (i.display && i.display !== i.nombre) {
-                    partesSub.push(i.display);
+                    subtitle += ` · ${i.display}`;
                 }
-                subtitle = partesSub.join(' · ');
             }
             btn.innerHTML = `<div><strong>${mainText}</strong><br><small class="text-muted">${subtitle}</small></div>${rightBadge}`;
             btn.onclick = function() {
@@ -680,12 +675,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectItem(i, btn);
             };
             results.appendChild(btn);
-            itemButtons.push(btn);
         });
-        if (items.length === 1 && itemButtons.length === 1) {
-            // Autoselección cuando hay un único resultado,
-            // evitando seleccionar la fila de información de Node.js
-            selectItem(items[0], itemButtons[0]);
+        if (items.length === 1) {
+            // Autoselección cuando hay un único resultado
+            selectItem(items[0], results.firstChild);
         }
     }
 

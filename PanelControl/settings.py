@@ -70,21 +70,39 @@ TEMPLATES = [
 WSGI_APPLICATION = 'PanelControl.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 import os
+DB_SCHEMA = os.getenv('DB_SCHEMA', '').strip()
+_pg_options = {'options': f"-c search_path={DB_SCHEMA},public"} if DB_SCHEMA else {}
 
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
-        'NAME': os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3'),
-        'USER': os.getenv('DB_USER', ''),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', ''),
-        'PORT': os.getenv('DB_PORT', ''),
-    }
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+        'USER': '',
+        'PASSWORD': '',
+        'HOST': '',
+        'PORT': '',
+    },
+    'sqlite': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+        'USER': '',
+        'PASSWORD': '',
+        'HOST': '',
+        'PORT': '',
+    },
+    'postgres': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'prtg'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'issM3dxxvAd'),
+        'HOST': os.getenv('DB_HOST', '10.63.17.147'),
+        'PORT': os.getenv('DB_PORT', '5433'),
+        'OPTIONS': _pg_options,
+    },
 }
+
+DATABASE_ROUTERS = ['PanelControl.db_router.DynamicDBRouter']
 
 
 # Password validation
