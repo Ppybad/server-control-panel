@@ -181,6 +181,24 @@
                                 {{ instancia_form.puerto_tomcat }}
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.snmp_community.label }}</label>
+                            {{ host_form.snmp_community }}
+                            {% if host_form.snmp_community.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.snmp_community.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">{{ host_form.snmp_port.label }}</label>
+                            {{ host_form.snmp_port }}
+                            {% if host_form.snmp_port.errors %}
+                            <div class="alert alert-danger mt-1 py-1 px-2">
+                                {{ host_form.snmp_port.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="mt-3">
                         <label class="form-label fw-bold">{{ instancia_form.nombre_servicio.label }}</label>
@@ -242,8 +260,14 @@
                                 </button>
                                 <div class="text-end ms-3">
                                     <span class="badge bg-light text-dark d-block mb-1">{{ h.instancias.count }} instancias</span>
-                                    {% if h.servidor_snmp_id %}
-                                    <a href="{% url "monitor_snmp" h.servidor_snmp_id %}"
+                                    {% if monitoring_mode == 'celery' %}
+                                    <a href="{% url 'monitor_host_celery' h.id %}"
+                                       class="btn btn-sm btn-outline-secondary"
+                                       title="Monitoreo Celery/SSH">
+                                        <i class="fas fa-chart-line"></i>
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'monitor_snmp_host' h.id %}"
                                        class="btn btn-sm btn-outline-secondary"
                                        title="Monitoreo SNMP">
                                         <i class="fas fa-chart-line"></i>
@@ -605,6 +629,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.classList.add('active', 'bg-primary', 'text-white');
             }
         };
+        const itemButtons = [];
         items.forEach(i => {
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -620,47 +645,35 @@ document.addEventListener('DOMContentLoaded', function() {
             let mainText = i.display || i.nombre;
             let subtitle = `${i.nombre} · ${i.estado}`;
             if (tipoServicioActual === 'node') {
-                // Texto principal más amigable para usuarios de ambiente
-                const partesMain = [];
+                // Nombre del servicio como dato principal (en negritas)
+                if (i.nombre) {
+                    mainText = i.nombre;
+                }
+                const partesSub = [];
+                partesSub.push(i.estado);
                 if (i.rol_node === 'api') {
-                    partesMain.push('Node.js API');
+                    partesSub.push('Node.js API');
                 } else if (i.rol_node === 'worker') {
-                    partesMain.push('Node.js Worker');
+                    partesSub.push('Node.js Worker');
                 } else {
-                    partesMain.push('Servicio Node.js');
-                }
-                if (i.puerto) {
-                    let alias = nodePortAliases[i.puerto];
-                    if (alias) {
-                        partesMain.push(`${alias} (puerto ${i.puerto})`);
-                    } else {
-                        partesMain.push(`puerto ${i.puerto}`);
-                    }
-                }
-                mainText = partesMain.join(' · ');
-                if (i.puerto) {
-                    let alias = nodePortAliases[i.puerto];
-                    if (alias) {
-                        subtitle += ` · Puerto ${i.puerto} · ${alias}`;
-                    } else {
-                        subtitle += ` · Puerto ${i.puerto}`;
-                    }
+                    partesSub.push('Servicio Node.js');
                 }
                 if (i.origen_node === 'systemd_service' || i.origen_node === 'servicio_windows') {
-                    subtitle += ' · Servicio gestionable';
+                    partesSub.push('Servicio gestionable');
                 } else if (i.origen_node === 'pm2') {
-                    subtitle += ' · PM2 (no gestionable)';
+                    partesSub.push('PM2 (no gestionable)');
                 } else if (i.origen_node === 'proceso_pid') {
-                    subtitle += ' · Proceso detectado (PID)';
+                    partesSub.push('Proceso detectado (PID)');
                 }
                 if (i.rol_node === 'api') {
-                    subtitle += ' · Posible API/HTTP';
+                    partesSub.push('Posible API/HTTP');
                 } else if (i.rol_node === 'worker') {
-                    subtitle += ' · Posible worker/daemon';
+                    partesSub.push('Posible worker/daemon');
                 }
                 if (i.display && i.display !== i.nombre) {
-                    subtitle += ` · ${i.display}`;
+                    partesSub.push(i.display);
                 }
+                subtitle = partesSub.join(' · ');
             }
             btn.innerHTML = `<div><strong>${mainText}</strong><br><small class="text-muted">${subtitle}</small></div>${rightBadge}`;
             btn.onclick = function() {
@@ -675,15 +688,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectItem(i, btn);
             };
             results.appendChild(btn);
+            itemButtons.push(btn);
         });
-        if (items.length === 1) {
-            // Autoselección cuando hay un único resultado
-            selectItem(items[0], results.firstChild);
+        if (items.length === 1 && itemButtons.length === 1) {
+            // Autoselección cuando hay un único resultado,
+            // evitando seleccionar la fila de información de Node.js
+            selectItem(items[0], itemButtons[0]);
         }
     }
 
     function scan() {
-        results.innerHTML = `
+        const useOverlay = !!window.AsyncTracker;
+        results.innerHTML = useOverlay ? `
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Buscando servicios...</div>
+            </div>
+        </div>` : `
         <div class="list-group-item">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Buscando servicios...</div>

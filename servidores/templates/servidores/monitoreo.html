@@ -5,7 +5,10 @@
     <div class="col-md-12">
         <div class="card shadow-sm">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h4 class="card-title mb-0"><i class="fas fa-chart-line me-2 text-info"></i>Monitoreo SNMP: {{ servidor.nombre }}</h4>
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2 text-info"></i>
+                    Monitoreo {% if monitor_mode == 'celery' %}Celery/SSH{% else %}SNMP{% endif %}: {{ servidor.nombre }}
+                </h4>
                 <div>
                     <span class="badge bg-secondary me-2">{{ servidor.ip_host }}</span>
                     <a href="{% url 'navegacion' %}" class="btn btn-outline-secondary btn-sm">Volver</a>
@@ -14,6 +17,7 @@
             <div class="card-body">
                 
                 <div id="snmp-error" class="alert alert-danger d-none"></div>
+                {% if monitor_mode != 'celery' %}
                 <div id="demo-warning" class="alert alert-warning d-none">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -44,6 +48,7 @@
                         </div>
                     </div>
                 </div>
+                {% endif %}
 
                 <div class="row text-center mb-4">
                     <div class="col-md-4">
@@ -151,8 +156,10 @@
             }
         });
 
+        const MONITOR_URL = "{{ monitor_url }}";
+
         function fetchData() {
-            fetch("{% url 'monitor_snmp_host' host_id %}?json=1")
+            fetch(MONITOR_URL + "?json=1")
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -163,11 +170,10 @@
                         document.getElementById('snmp-error').classList.add('d-none');
                     }
 
-                    // Demo Mode Handling
-                    if (data.is_demo) {
+                    if (data.is_demo && document.getElementById('demo-warning')) {
                         document.getElementById('demo-warning').classList.remove('d-none');
                         document.getElementById('demo-reason').textContent = data.error_real || 'Timeout';
-                    } else {
+                    } else if (document.getElementById('demo-warning')) {
                         document.getElementById('demo-warning').classList.add('d-none');
                     }
 
@@ -201,9 +207,29 @@
                 .catch(err => console.error('Error fetching SNMP data:', err));
         }
 
-        // Fetch inicial y polling cada 5s
         fetchData();
-        setInterval(fetchData, 5000);
+        let monitorInterval = setInterval(fetchData, 2000);
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                if (monitorInterval) {
+                    clearInterval(monitorInterval);
+                    monitorInterval = null;
+                }
+            } else {
+                if (!monitorInterval) {
+                    fetchData();
+                    monitorInterval = setInterval(fetchData, 2000);
+                }
+            }
+        });
+
+        window.addEventListener('beforeunload', function () {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
+            }
+        });
     });
 </script>
 {% endblock %}

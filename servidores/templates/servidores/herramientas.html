@@ -45,6 +45,41 @@
       </div>
     </div>
 
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+        <h5 class="card-title mb-0 text-dark"><i class="fas fa-chart-line me-2"></i>Monitoreo</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-2">
+          Motor de monitoreo actual: <strong>{{ monitoring_mode|upper }}</strong>
+          <span class="ms-2 badge {% if monitoring_source == 'env' %}bg-primary{% else %}bg-secondary{% endif %}">
+            {% if monitoring_source == 'env' %}.env{% else %}monitoring_mode.txt{% endif %}
+          </span>
+        </p>
+        <form method="post" action="{% url 'config_monitoring' %}" class="row g-3 align-items-center">
+          {% csrf_token %}
+          <div class="col-auto">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="monitoringSwitch" name="monitoring_mode" value="celery" {% if monitoring_mode == 'celery' %}checked{% endif %}>
+              <label class="form-check-label" for="monitoringSwitch">Usar Celery/SSH en lugar de SNMP</label>
+            </div>
+          </div>
+          <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
+        </form>
+        {% if monitoring_source == 'env' %}
+          <div class="small text-muted mt-2">
+            Se guardará en <code>.env</code> y requiere reiniciar el servidor o el worker de Celery para aplicar.
+          </div>
+        {% else %}
+          <div class="small text-muted mt-2">
+            Se guardará en <code>monitoring_mode.txt</code> y aplica en las siguientes solicitudes.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
     {% if trusted_supported %}
     <!-- WinRM TrustedHosts -->
     <div class="card shadow-sm mb-4">

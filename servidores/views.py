@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.urls import reverse
 from types import SimpleNamespace
 
 from .models import Host, Instancia
@@ -13,6 +14,7 @@ from .services_restart import reiniciar_servidor_tomcat, detener_servidor_tomcat
 from .services_docker import listar_contenedores_docker
 from .services_local import listar_contenedores_docker_local, listar_servicios_tomcat_locales, listar_servicios_node_locales, obtener_trusted_hosts, agregar_trusted_host, eliminar_trusted_host, establecer_comodin_trustedhosts
 from .services_snmp import consultar_metricas_snmp
+from .tasks import monitor_host
 import platform
 import json
 import time
@@ -201,24 +203,38 @@ def documentacion(request):
 
 def herramientas(request):
     selected_mode = None
+    monitoring_mode = None
     try:
         p = Path(settings.BASE_DIR) / 'db_mode.txt'
         if p.exists():
             selected_mode = (p.read_text(encoding='utf-8').strip().lower() or '')
     except Exception:
         selected_mode = None
+    try:
+        mp = Path(settings.BASE_DIR) / 'monitoring_mode.txt'
+        if mp.exists():
+            monitoring_mode = (mp.read_text(encoding='utf-8').strip().lower() or '')
+    except Exception:
+        monitoring_mode = None
     env_mode = os.getenv('DB_MODE')
+    monitoring_env_mode = os.getenv('MONITORING_MODE')
     if not selected_mode:
         selected_mode = (env_mode or 'sqlite').strip().lower()
+    if not monitoring_mode:
+        monitoring_mode = (monitoring_env_mode or 'snmp').strip().lower()
     in_docker = Path('/.dockerenv').exists()
     trusted_supported = (platform.system() == 'Windows') and (not in_docker)
     source = 'env' if env_mode else 'file'
+    monitoring_source = 'env' if monitoring_env_mode else 'file'
     return render(request, 'servidores/herramientas.html', {
         'db_mode': 'postgres' if selected_mode == 'postgres' else 'sqlite',
         'in_docker': in_docker,
         'db_source': source,
         'env_mode': (env_mode or '').strip().lower(),
         'trusted_supported': trusted_supported,
+        'monitoring_mode': 'celery' if monitoring_mode == 'celery' else 'snmp',
+        'monitoring_source': monitoring_source,
+        'monitoring_env_mode': (monitoring_env_mode or '').strip().lower(),
     })
 
 def config_db(request):
@@ -259,6 +275,43 @@ def config_db(request):
             messages.success(request, 'Modo de BD cambiado a SQLite. El cambio aplica en las siguientes solicitudes.')
     except Exception as e:
         messages.error(request, f'No se pudo guardar la configuración: {e}')
+    return redirect('herramientas')
+
+
+def config_monitoring(request):
+    if request.method != 'POST':
+        return redirect('herramientas')
+    mode = request.POST.get('monitoring_mode', 'snmp').strip().lower()
+    if mode not in ['snmp', 'celery']:
+        messages.error(request, 'Modo de monitoreo inválido.')
+        return redirect('herramientas')
+    env_in_use = bool(os.getenv('MONITORING_MODE'))
+    try:
+        if env_in_use:
+            env_path = Path(settings.BASE_DIR) / '.env'
+            content = ''
+            if env_path.exists():
+                content = env_path.read_text(encoding='utf-8')
+            lines = content.splitlines() if content else []
+            found = False
+            new_lines = []
+            for line in lines:
+                if line.strip().startswith('MONITORING_MODE='):
+                    new_lines.append(f'MONITORING_MODE={"celery" if mode=="celery" else "snmp"}')
+                    found = True
+                else:
+                    new_lines.append(line)
+            if not found:
+                new_lines.append(f'MONITORING_MODE={"celery" if mode=="celery" else "snmp"}')
+            env_path.write_text('\n'.join(new_lines) + ('\n' if new_lines else ''), encoding='utf-8')
+        with open(Path(settings.BASE_DIR) / 'monitoring_mode.txt', 'w', encoding='utf-8') as f:
+            f.write(mode)
+        if mode == 'celery':
+            messages.success(request, 'Modo de monitoreo cambiado a Celery/SSH.')
+        else:
+            messages.success(request, 'Modo de monitoreo cambiado a SNMP.')
+    except Exception as e:
+        messages.error(request, f'No se pudo guardar la configuración de monitoreo: {e}')
     return redirect('herramientas')
 
 def navegacion(request):
@@ -316,6 +369,16 @@ def navegacion(request):
     prompt_ms = getattr(settings, 'NAV_SCAN_PROMPT_MS', 30000)
     request_ms = getattr(settings, 'NAV_SCAN_REQUEST_MS', 180000)
     prompt_sec = int(prompt_ms / 1000) if prompt_ms else 30
+    monitoring_mode = None
+    try:
+        mp = Path(settings.BASE_DIR) / 'monitoring_mode.txt'
+        if mp.exists():
+            monitoring_mode = (mp.read_text(encoding='utf-8').strip().lower() or '')
+    except Exception:
+        monitoring_mode = None
+    monitoring_env_mode = os.getenv('MONITORING_MODE')
+    if not monitoring_mode:
+        monitoring_mode = (monitoring_env_mode or 'snmp').strip().lower()
     return render(request, 'servidores/navegacion.html', {
         'host_form': host_form,
         'instancia_form': instancia_form,
@@ -323,6 +386,48 @@ def navegacion(request):
         'nav_scan_prompt_ms': prompt_ms,
         'nav_scan_request_ms': request_ms,
         'nav_scan_prompt_sec': prompt_sec,
+        'monitoring_mode': 'celery' if monitoring_mode == 'celery' else 'snmp',
+    })
+
+
+def monitor_host_celery(request, pk):
+    host = get_object_or_404(Host, pk=pk)
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('json'):
+        async_result = monitor_host.delay(host.id)
+        try:
+            result = async_result.get(timeout=10)
+        except Exception as e:
+            return JsonResponse({
+                'cpu_load': 0.0,
+                'ram_used': 0.0,
+                'ram_total': 0.0,
+                'uptime': '',
+                'sys_descr': f'{host.nombre} ({host.ip_host})',
+                'is_demo': False,
+                'error': str(e),
+                'error_real': str(e),
+            }, status=500)
+        data = {
+            'cpu_load': float(result.get('cpu') or 0.0),
+            'ram_used': float(result.get('ram_used') or 0.0),
+            'ram_total': float(result.get('ram_total') or result.get('ram_used') or 0.0),
+            'uptime': '',
+            'sys_descr': f'{host.nombre} ({host.ip_host})',
+            'is_demo': False,
+            'error': None if result.get('ok') else (result.get('reason') or 'error'),
+            'error_real': None,
+        }
+        return JsonResponse(data)
+    monitor_url = reverse('monitor_host_celery', args=[host.id])
+    return render(request, 'servidores/monitoreo.html', {
+        'servidor': SimpleNamespace(
+            nombre=getattr(host, 'nombre', host.ip_host),
+            ip_host=host.ip_host,
+            snmp_community='',
+        ),
+        'host_id': host.id,
+        'monitor_mode': 'celery',
+        'monitor_url': monitor_url,
     })
 
 
@@ -574,9 +679,12 @@ def monitor_snmp_host(request, pk):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'json' in request.GET:
         data = consultar_metricas_snmp(host_like)
         return JsonResponse(data)
+    monitor_url = reverse('monitor_snmp_host', args=[host.id])
     return render(request, 'servidores/monitoreo.html', {
         'servidor': host_like,
         'host_id': host.id,
+        'monitor_mode': 'snmp',
+        'monitor_url': monitor_url,
     })
 
 def trusted_hosts(request):

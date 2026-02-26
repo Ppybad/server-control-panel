@@ -25,6 +25,8 @@ def decode_winrm_output(bytes_data):
     # Si todo falla, usar utf-8 con replace
     return bytes_data.decode('utf-8', errors='replace').strip()
 
+logger = logging.getLogger('servidores.services')
+
 IN_DOCKER = os.path.exists('/.dockerenv')
 
 
@@ -36,7 +38,7 @@ def _resolve_ssh_host(ip):
 
 def _connect_ssh(client, ip, port, user, password):
     target_ip = _resolve_ssh_host(ip)
-    logging.getLogger("paramiko").setLevel(logging.DEBUG)
+    logger.debug(f"SSH connect to {target_ip}:{port or 22} user={user}")
     kwargs = {
         'hostname': target_ip,
         'port': port or 22,
@@ -126,6 +128,7 @@ def _verificar_estado(servidor):
                 mensaje += f" Puerto {servidor.puerto_tomcat} OK."
             
     except Exception as e:
+            logger.exception("Error en _verificar_estado")
             mensaje = str(e)
 
     return estado, mensaje
@@ -147,6 +150,7 @@ def check_winrm(servidor):
         if not servidor.usuario or not servidor.password:
             return "Error", "Faltan credenciales (usuario/password)"
 
+        logger.info(f"WINRM estado {servidor.ip_host}:{port} servicio={servidor.nombre_servicio or '*Tomcat*'}")
         session = winrm.Session(url, auth=(servidor.usuario, servidor.password), transport='ntlm')
         
         # Estrategia mejorada: 
@@ -213,6 +217,7 @@ def check_winrm(servidor):
             return "Error", f"Error WinRM: {err}"
             
     except Exception as e:
+        logger.exception(f"Excepción en check_winrm hacia {servidor.ip_host}:{port}")
         return "Error", f"Fallo conexión WinRM (Puerto {port}): {str(e)}"
 
 def check_ssh(servidor):
@@ -220,6 +225,7 @@ def check_ssh(servidor):
         if not servidor.usuario or not servidor.password:
             return "Error", "Faltan credenciales"
 
+        logger.info(f"SSH estado {servidor.ip_host}:{servidor.puerto_conexion or 22}")
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         port = servidor.puerto_conexion if servidor.puerto_conexion else 22
@@ -249,14 +255,14 @@ def check_ssh(servidor):
         return "Error", "No se detectó servicio ni proceso Tomcat."
 
     except Exception as e:
-        if not IN_DOCKER:
-            traceback.print_exc()
+        logger.exception(f"Excepción en check_ssh hacia {servidor.ip_host}:{servidor.puerto_conexion or 22}")
         return "Error", f"Fallo conexión SSH (Puerto {port}): {str(e)}"
 
 
 def scan_winrm_tomcat(ip, port, user, password):
     url = f"http://{ip}:{port or 5985}/wsman"
     try:
+        logger.info(f"WINRM scan Tomcat {ip}:{port or 5985}")
         session = winrm.Session(url, auth=(user, password), transport='ntlm')
         # Un solo script que devuelve servicios Tomcat con PID y puertos en JSON
         ps = r"""
@@ -324,11 +330,13 @@ def scan_winrm_tomcat(ip, port, user, password):
             pass
         return items, None
     except Exception as e:
+        logger.exception(f"Excepción en scan_winrm_tomcat hacia {ip}:{port or 5985}")
         return [], str(e)
 
 
 def scan_ssh_tomcat(ip, port, user, password):
     try:
+        logger.info(f"SSH scan Tomcat {ip}:{port or 22}")
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         _connect_ssh(client, ip, port or 22, user, password)
@@ -385,14 +393,14 @@ def scan_ssh_tomcat(ip, port, user, password):
         client.close()
         return items, None
     except Exception as e:
-        if not IN_DOCKER:
-            traceback.print_exc()
+        logger.exception(f"Excepción en scan_ssh_tomcat hacia {ip}:{port or 22}")
         return [], str(e)
 
 
 def scan_winrm_node(ip, port, user, password):
     url = f"http://{ip}:{port or 5985}/wsman"
     try:
+        logger.info(f"WINRM scan Node {ip}:{port or 5985}")
         session = winrm.Session(url, auth=(user, password), transport='ntlm')
         # 1) Servicios Windows cuyo ejecutable apunte a node.exe
         # 2) Procesos node.exe con sus puertos asociados y datos de proceso
@@ -675,9 +683,11 @@ $results | ConvertTo-Json
                     'rol_node': rol,
                 })
         except Exception:
+            logger.exception("Error procesando salida de scan_winrm_node")
             pass
         return items, None
     except Exception as e:
+        logger.exception(f"Excepción en scan_winrm_node hacia {ip}:{port or 5985}")
         return [], str(e)
 
 

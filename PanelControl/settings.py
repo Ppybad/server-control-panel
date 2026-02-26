@@ -151,3 +151,56 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 NAV_SCAN_PROMPT_MS = 12000
 # Timeout total de la solicitud de exploración (ms)
 NAV_SCAN_REQUEST_MS = 100000
+
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_FILE = os.getenv('LOG_FILE', str(BASE_DIR / 'panel.log'))
+
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '[{levelname}] {asctime} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'level': LOG_LEVEL,
+        },
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'simple',
+            'filename': LOG_FILE,
+            'maxBytes': 1048576,
+            'backupCount': 3,
+            'level': LOG_LEVEL,
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': LOG_LEVEL,
+    },
+    'loggers': {
+        'django': {
+            'level': 'INFO',
+            'handlers': ['console', 'file'],
+            'propagate': False,
+        },
+        'paramiko': {
+            'level': 'WARNING',
+            'handlers': ['console', 'file'],
+            'propagate': False,
+        },
+        'servidores': {
+            'level': LOG_LEVEL,
+            'handlers': ['console', 'file'],
+            'propagate': False,
+        },
+    },
+}

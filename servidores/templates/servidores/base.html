@@ -149,6 +149,9 @@
                 <div class="progress-bar bg-primary" id="loader-progress" style="width: 0%"></div>
             </div>
             <div class="small text-muted" id="loader-time">00:00</div>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="loader-cancel">Cancelar</button>
+            </div>
         </div>
     </div>
     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 2100">
@@ -245,6 +248,9 @@
         const toastContainer = document.getElementById('toast-container');
         const opsFab = document.getElementById('opsFab');
         const opsList = document.getElementById('opsList');
+        const cancelBtn = document.getElementById('loader-cancel');
+        let activeCtrl = null;
+        let activeOpId = null;
         let timer = null;
         function fmt(ms){const s=Math.floor(ms/1000);const m=String(Math.floor(s/60)).padStart(2,'0');const r=String(s%60).padStart(2,'0');return `${m}:${r}`;}
         function toast(msg,variant){
@@ -256,8 +262,8 @@
             new bootstrap.Toast(el,{delay:3500}).show();
         }
         function disableInteractive(disable){
-            if(disable){ blocker.classList.add('show'); document.body.classList.add('pe-none','user-select-none');}
-            else { blocker.classList.remove('show'); document.body.classList.remove('pe-none','user-select-none');}
+            if(disable){ blocker.classList.add('show'); document.body.classList.add('user-select-none');}
+            else { blocker.classList.remove('show'); document.body.classList.remove('user-select-none');}
         }
         const AsyncTracker = {
             ops: new Map(),
@@ -276,18 +282,26 @@
                 const startedAt = Date.now();
                 const op={id,desc,status:'running',startedAt,progress:0};
                 AsyncTracker.ops.set(id, op);
+                activeCtrl = ctrl;
+                activeOpId = id;
                 renderOps();
                 const to = setTimeout(()=>{ ctrl.abort(); op.status='timeout'; renderOps(); }, timeout);
                 const cfg = Object.assign({}, init, {signal: ctrl.signal});
                 let p = typeof input==='string'? fetch(input, cfg) : fetch(input, cfg);
                 return p.then(r=>{ clearTimeout(to); op.status = r.ok?'success':('http '+r.status); renderOps(); return r; })
                         .catch(e=>{ clearTimeout(to); op.status = e.name==='AbortError'?'timeout':'error'; renderOps(); throw e; })
-                        .finally(()=>{ setTimeout(()=> AsyncTracker.hide(), min); });
+                        .finally(()=>{ setTimeout(()=> AsyncTracker.hide(), min); activeCtrl=null; activeOpId=null; });
             },
             finishNotify(ok,msgOk,msgErr){ if(ok) toast(msgOk||'Operación completada','success'); else toast(msgErr||'Error en la operación','danger');},
-            notify: toast
+            notify: toast,
+            cancel(reason){
+                if(activeCtrl && typeof activeCtrl.abort==='function'){ activeCtrl.abort(); }
+                AsyncTracker.finishNotify(false, null, reason || 'Operación cancelada');
+                AsyncTracker.hide();
+            }
         };
         window.AsyncTracker = AsyncTracker;
+        if(cancelBtn){ cancelBtn.addEventListener('click', function(){ AsyncTracker.cancel('Cancelado por el usuario'); }); }
         function renderOps(){
             if(!opsList) return;
             opsList.innerHTML='';
@@ -314,12 +328,31 @@
                 AsyncTracker.show('Navegando','Cargando');
             }
             const btn = e.target.closest('button[type="submit"],input[type="submit"]');
-            if(btn && btn.getAttribute('data-no-loader')!=='true'){ AsyncTracker.show('Enviando','Procesando'); }
+            if(btn && btn.getAttribute('data-no-loader')!=='true'){
+                const form = btn.form || e.target.closest('form');
+                if(form && typeof form.checkValidity === 'function'){
+                    if(form.checkValidity()){
+                        AsyncTracker.show('Enviando','Procesando');
+                    } else {
+                        // Deja que el navegador muestre las validaciones y NO muestres overlay
+                    }
+                } else {
+                    AsyncTracker.show('Enviando','Procesando');
+                }
+            }
         });
         document.addEventListener('submit', function(e){
             const f=e.target;
             if(f && f.getAttribute('data-no-loader')!=='true'){
-                AsyncTracker.show('Enviando','Procesando');
+                if(typeof f.checkValidity === 'function'){
+                    if(f.checkValidity()){
+                        AsyncTracker.show('Enviando','Procesando');
+                    } else {
+                        // Evita overlay si el formulario no es válido
+                    }
+                } else {
+                    AsyncTracker.show('Enviando','Procesando');
+                }
             }
         });
     })();

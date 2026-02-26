@@ -6,6 +6,7 @@ urlpatterns = [
     path('documentacion/', views.documentacion, name='documentacion'),
     path('herramientas/', views.herramientas, name='herramientas'),
     path('config/db/', views.config_db, name='config_db'),
+    path('config/monitoring/', views.config_monitoring, name='config_monitoring'),
     path('health/', views.health, name='health'),
     path('estado/', views.estado_sistema, name='estado_sistema'),
     path('estado/diagnostico/', views.estado_diagnostico, name='estado_diagnostico'),
@@ -25,4 +26,5 @@ urlpatterns = [
     path('navegacion/host/<int:pk>/explorar-docker/', views.explorar_docker_host, name='explorar_docker_host'),
     path('descubrir-tomcat-local/', views.descubrir_tomcat_local, name='descubrir_tomcat_local'),
     path('monitoreo/host/<int:pk>/', views.monitor_snmp_host, name='monitor_snmp_host'),
+    path('monitoreo/host/<int:pk>/celery/', views.monitor_host_celery, name='monitor_host_celery'),
 ]

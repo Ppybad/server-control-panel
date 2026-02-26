@@ -1,6 +1,8 @@
-Django>=5.0
+Django>=5.0,<6.0
 paramiko>=3.0
 pywinrm>=0.4
 requests>=2.30
 pysnmp>=4.4.12
 psycopg2-binary>=2.9
+celery>=5.4
+redis>=5.0

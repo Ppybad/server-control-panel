@@ -3,6 +3,8 @@ import logging
 import os
 import traceback
 
+logger = logging.getLogger('servidores.services_docker')
+
 IN_DOCKER = os.path.exists('/.dockerenv')
 
 
@@ -14,7 +16,7 @@ def _resolve_ssh_host(ip):
 
 def _connect_ssh(client, ip, port, user, password):
     target_ip = _resolve_ssh_host(ip)
-    logging.getLogger("paramiko").setLevel(logging.DEBUG)
+    logger.debug(f"SSH Docker connect to {target_ip}:{port or 22} user={user}")
     kwargs = {
         'hostname': target_ip,
         'port': port or 22,
@@ -35,6 +37,7 @@ def listar_contenedores_docker(ip, port, user, password):
     Retorna una lista de diccionarios con info de cada contenedor.
     """
     try:
+        logger.info(f"SSH listar_contenedores_docker {ip}:{port or 22}")
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         real_port = port if port else 22
@@ -77,8 +80,7 @@ def listar_contenedores_docker(ip, port, user, password):
         return contenedores, None
             
     except Exception as e:
-        if not IN_DOCKER:
-            traceback.print_exc()
+        logger.exception(f"Excepción en listar_contenedores_docker hacia {ip}:{port or 22}")
         return None, f"Error conexión SSH: {str(e)}"
 
 def controlar_docker(servidor, accion):
@@ -99,6 +101,7 @@ def controlar_docker(servidor, accion):
         return False, "Error: No se ha especificado el nombre del contenedor (nombre_servicio)."
 
     try:
+        logger.info(f"SSH controlar_docker {servidor.ip_host}:{servidor.puerto_conexion or 22} contenedor={container_name} accion={accion}")
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -127,8 +130,7 @@ def controlar_docker(servidor, accion):
              return False, f"Error Docker: {error}"
             
     except Exception as e:
-        if not IN_DOCKER:
-            traceback.print_exc()
+        logger.exception(f"Excepción en controlar_docker hacia {servidor.ip_host}:{servidor.puerto_conexion or 22}")
         return False, f"Fallo conexión SSH (Puerto {port}): {str(e)}"
 
 def verificar_estado_docker(servidor):
@@ -140,6 +142,7 @@ def verificar_estado_docker(servidor):
         return "Desconocido", "Sin nombre de contenedor"
 
     try:
+        logger.info(f"SSH verificar_estado_docker {servidor.ip_host}:{servidor.puerto_conexion or 22} contenedor={container_name}")
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
@@ -165,6 +168,5 @@ def verificar_estado_docker(servidor):
             return "Error", "Contenedor no encontrado"
             
     except Exception as e:
-        if not IN_DOCKER:
-            traceback.print_exc()
+        logger.exception(f"Excepción en verificar_estado_docker hacia {servidor.ip_host}:{servidor.puerto_conexion or 22}")
         return "Error", f"Fallo verificación: {str(e)}"

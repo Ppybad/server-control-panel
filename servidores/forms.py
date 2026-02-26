@@ -35,6 +35,23 @@ class HostForm(forms.ModelForm):
         tipo = cleaned.get('tipo_conexion')
         usuario = cleaned.get('usuario')
         password = cleaned.get('password')
+        ip_host = cleaned.get('ip_host')
+        nombre = cleaned.get('nombre')
+        snmp_port = cleaned.get('snmp_port')
+        puerto_conexion = cleaned.get('puerto_conexion')
+
+        if not nombre:
+            self.add_error('nombre', 'El nombre del host es obligatorio.')
+
+        if not ip_host:
+            self.add_error('ip_host', 'El Host/IP es obligatorio.')
+
+        if snmp_port is not None and (snmp_port <= 0 or snmp_port > 65535):
+            self.add_error('snmp_port', 'El puerto SNMP debe estar entre 1 y 65535.')
+
+        if puerto_conexion is not None and (puerto_conexion <= 0 or puerto_conexion > 65535):
+            self.add_error('puerto_conexion', 'El puerto de conexión debe estar entre 1 y 65535.')
+
         # Requerir credenciales para conexiones remotas
         if tipo in ['winrm', 'ssh']:
             if not usuario:
@@ -65,3 +82,22 @@ class InstanciaForm(forms.ModelForm):
             }),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        host = cleaned.get('host')
+        nombre_servicio = cleaned.get('nombre_servicio')
+        puerto_tomcat = cleaned.get('puerto_tomcat')
+
+        if not host:
+            self.add_error('host', 'Debes seleccionar un host.')
+
+        if not nombre_servicio:
+            self.add_error('nombre_servicio', 'El nombre del servicio/contenedor es obligatorio.')
+
+        if puerto_tomcat is None:
+            self.add_error('puerto_tomcat', 'El puerto es obligatorio.')
+        elif puerto_tomcat <= 0 or puerto_tomcat > 65535:
+            self.add_error('puerto_tomcat', 'El puerto debe estar entre 1 y 65535.')
+
+        return cleaned

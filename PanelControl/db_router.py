@@ -20,13 +20,13 @@ class DynamicDBRouter:
 
     def db_for_read(self, model, **hints):
         m = self._mode()
-        return 'postgres' if m == 'postgres' else 'sqlite'
+        return 'postgres' if m == 'postgres' else 'default'
 
     def db_for_write(self, model, **hints):
         m = self._mode()
-        return 'postgres' if m == 'postgres' else 'sqlite'
+        return 'postgres' if m == 'postgres' else 'default'
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         m = self._mode()
-        return db == ('postgres' if m == 'postgres' else 'sqlite')
-
+        target = 'postgres' if m == 'postgres' else 'default'
+        return db == target

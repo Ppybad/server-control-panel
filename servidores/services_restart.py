@@ -4,6 +4,8 @@ import logging
 import os
 import traceback
 
+logger = logging.getLogger('servidores.services_restart')
+
 IN_DOCKER = os.path.exists('/.dockerenv')
 
 
@@ -42,6 +44,7 @@ def controlar_servicio_tomcat(servidor, accion):
     """
     Controla el servicio Tomcat (start, stop, restart).
     """
+    logger.info(f"Control {accion} tipo={servidor.tipo_conexion}/{servidor.tipo_instalacion} host={servidor.ip_host}")
     if servidor.tipo_conexion == 'local':
         if servidor.tipo_instalacion == 'docker':
             return controlar_servicio_local_docker(servidor.nombre_servicio, accion)
@@ -73,6 +76,7 @@ def controlar_winrm(servidor, accion):
     port = servidor.puerto_conexion if servidor.puerto_conexion else 5985
     url = f"http://{servidor.ip_host}:{port}/wsman"
     try:
+        logger.info(f"WINRM control {accion} {servidor.ip_host}:{port} servicio={servidor.nombre_servicio or '*Tomcat*'}")
         session = winrm.Session(url, auth=(servidor.usuario, servidor.password), transport='ntlm')
         
         service_name = servidor.nombre_servicio
@@ -121,6 +125,7 @@ def controlar_winrm(servidor, accion):
             return False, f"Error: {error or output or 'Desconocido'}"
             
     except Exception as e:
+        logger.exception(f"Excepción en controlar_winrm hacia {servidor.ip_host}:{port}")
         return False, f"Fallo conexión WinRM (Puerto {port}): {str(e)}"
 
 def controlar_ssh(servidor, accion):
@@ -133,6 +138,7 @@ def controlar_ssh(servidor, accion):
     systemctl_action = cmds.get(accion)
 
     try:
+        logger.info(f"SSH control {accion} {servidor.ip_host}:{servidor.puerto_conexion or 22} servicio={getattr(servidor, 'nombre_servicio', '')}")
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         logging.getLogger("paramiko").setLevel(logging.DEBUG)
@@ -173,6 +179,5 @@ def controlar_ssh(servidor, accion):
              return False, f"Error SSH: {error}"
             
     except Exception as e:
-        if not IN_DOCKER:
-            traceback.print_exc()
+        logger.exception(f"Excepción en controlar_ssh hacia {servidor.ip_host}:{servidor.puerto_conexion or 22}")
         return False, f"Fallo conexión SSH (Puerto {port}): {str(e)}"
