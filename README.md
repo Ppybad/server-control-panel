@@ -68,7 +68,7 @@ Si deseas utilizar la funcionalidad de **"Local (Este Equipo)"** para gestionar 
 
 ## 🐳 Despliegue con Docker (Entorno Servidor)
 
-Esta opción levanta el panel ya contenedor en modo “servidor”, usando PostgreSQL y Redis.
+Esta opcion levanta el panel en contenedores usando Django + Redis + un worker Celery. La conexion a base de datos se toma desde `.env` y puede apuntar a SQLite o PostgreSQL segun `DB_MODE`.
 
 ### Prerrequisitos
 
@@ -85,28 +85,42 @@ docker-compose up --build
 
 Esto levanta:
 
-- **web**: contenedor con Django (este panel) escuchando en `0.0.0.0:8000`.
-- **db**: PostgreSQL con base `panelcontrol` (usuario `paneluser`, contraseña `panelpass`).
-- **redis**: Redis para futuras tareas en segundo plano / caché.
+- **web**: contenedor con Django, ejecuta `python manage.py migrate && python manage.py runserver 0.0.0.0:8000`
+- **worker**: proceso Celery para monitoreo SSH/Celery
+- **redis**: broker y result backend para Celery
+
+Notas importantes:
+
+- El archivo `docker-compose.yml` actual **no** incluye un contenedor `db`.
+- La base real usada por Django sale de las variables `DB_MODE`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` y opcionalmente `DB_SCHEMA`.
+- Si `DB_MODE=postgres`, el panel usa el alias `postgres`; si no, usa `db.sqlite3`.
 
 Acceso al panel:
 
 - Navegador: `http://localhost:8000`
 
-### Comandos de gestión dentro del contenedor
+### Comandos de gestion dentro del contenedor
 
-1. Ver el nombre del contenedor de la app:
+1. Ver el nombre de los contenedores:
 
 ```bash
 docker ps
 ```
 
-2. Ejecutar comandos Django dentro del contenedor `web` (ejemplos):
+2. Ejecutar comandos Django dentro del contenedor `web`:
 
 ```bash
 docker exec -it <nombre-del-contenedor-web> python manage.py createsuperuser
 docker exec -it <nombre-del-contenedor-web> python manage.py migrate
 docker exec -it <nombre-del-contenedor-web> python test_ssh.py <IP> <PUERTO> <USUARIO> <PASSWORD>
+```
+
+3. Ver logs de arranque y diagnostico:
+
+```bash
+docker-compose logs -f web
+docker-compose logs -f worker
+docker-compose up --build
 ```
 
 ### Parar y limpiar
@@ -127,58 +141,89 @@ docker-compose down -v
 
 Cuando el panel corre dentro de Docker:
 
-- El panel está pensado como **gestor remoto**:
+- El panel esta pensado como **gestor remoto**:
   - Linux por SSH
   - Windows por WinRM
   - Docker remoto vía SSH
-- Las opciones “Local (Este Equipo)” (Tomcat local y Docker local) pueden no estar disponibles o estar limitadas, ya que el contenedor no tiene acceso directo a los servicios ni al binario `docker` del host.
+- Cuando el host configurado es `localhost` o `127.0.0.1`, el codigo intenta resolverlo como `host.docker.internal` dentro del contenedor para SSH.
+- Las opciones “Local (Este Equipo)” pueden estar limitadas, ya que el contenedor no tiene acceso directo a los servicios del host ni al binario `docker` del host salvo configuracion extra.
 
 ---
 
 ## 📚 Documentación Técnica de Comandos
 
-El panel utiliza diferentes protocolos y comandos según el tipo de conexión y servidor.
+El panel utiliza distintos protocolos y comandos segun el tipo de conexion, el tipo de servicio y el flujo de navegacion activa.
 
 ### 1. Windows Remoto (WinRM)
-Utiliza la librería `pywinrm` para ejecutar comandos de PowerShell.
-*   **Puerto por defecto:** 5985 (HTTP).
-*   **Verificar Estado:** `Get-Service -Name 'NombreServicio' | Select-Object Status`
-*   **Iniciar:** `Start-Service -Name 'NombreServicio'`
-*   **Detener:** `Stop-Service -Name 'NombreServicio' -Force`
-*   **Reiniciar:** `Restart-Service -Name 'NombreServicio' -Force`
+Usa `pywinrm` con transporte NTLM sobre `http://<ip>:5985/wsman`.
+
+- **Tomcat remoto**
+  - Escaneo: `Get-WmiObject Win32_Service | Where-Object { $_.Name -like '*Tomcat*' -or $_.DisplayName -like '*Tomcat*' }`
+  - Puertos por PID: `Get-NetTCPConnection -State Listen | Where-Object { $_.OwningProcess -eq $pid }`
+  - Verificacion: `Get-Service -Name '<servicio>' | Select-Object -ExpandProperty Status`
+  - Control: `Start-Service`, `Stop-Service -Force`, `Restart-Service -Force`
+- **Node remoto**
+  - Escaneo de servicios: `Get-WmiObject Win32_Service | Where-Object { $_.PathName -like '*node.exe*' ... }`
+  - Escaneo de procesos: `Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' }`
+  - Puertos por PID: `Get-NetTCPConnection -State Listen`
+  - El flujo marca si el hallazgo es servicio Windows o proceso `PID:`.
 
 ### 2. Linux / SSH
-Utiliza la librería `paramiko` para conectar vía SSH.
-*   **Puerto por defecto:** 22.
-*   **Verificar Estado:** `systemctl is-active 'nombre_servicio'`
-*   **Iniciar:** `sudo systemctl start 'nombre_servicio'`
-*   **Detener:** `sudo systemctl stop 'nombre_servicio'`
-*   **Reiniciar:** `sudo systemctl restart 'nombre_servicio'`
+Usa `paramiko` por SSH, normalmente en puerto `22`.
 
-### 3. Docker (Vía SSH)
-Se conecta al servidor anfitrión vía SSH y ejecuta comandos `docker`. Requiere que el usuario tenga permisos `sudo`.
-*   **Listar Contenedores:** `echo 'password' | sudo -S docker ps --format '{{.ID}}|{{.Names}}|{{.Image}}|{{.Status}}'`
-*   **Iniciar:** `echo 'password' | sudo -S docker start 'contenedor'`
-*   **Detener:** `echo 'password' | sudo -S docker stop 'contenedor'`
-*   **Reiniciar:** `echo 'password' | sudo -S docker restart 'contenedor'`
-*   **Nota:** Se utiliza `sudo -S` para pasar la contraseña vía entrada estándar (stdin) y evitar errores de terminal interactiva.
+- **Tomcat remoto**
+  - Verificacion: `systemctl is-active tomcat || systemctl is-active tomcat9 || systemctl is-active tomcat10`
+  - Fallback por proceso: `ps aux | grep [t]omcat`
+  - Puertos: `ss -ltnp | grep java || netstat -ltnp | grep java`
+  - Control: `sudo systemctl start|stop|restart <servicio>`
+- **Node remoto**
+  - PM2: `pm2 jlist 2>/dev/null || true`
+  - systemd: `systemctl list-units --type=service --all | grep -i node || true`
+  - procesos: `ps aux | grep [n]ode`
+  - puertos: `ss -ltnp | grep <pid> || netstat -ltnp | grep <pid>`
+  - El flujo clasifica origen como `pm2`, `systemd_service` o `proceso_pid`.
+
+### 3. Docker por SSH
+Se conecta al host remoto por SSH y ejecuta Docker con `sudo -S`.
+
+- **Listar contenedores:** `sudo -S docker ps -a --format '{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}'`
+- **Verificar estado:** `sudo -S docker ps -a --filter 'name=<contenedor>' --format '{{.Status}}'`
+- **Iniciar:** `sudo -S docker start <contenedor>`
+- **Detener:** `sudo -S docker stop <contenedor>`
+- **Reiniciar:** `sudo -S docker restart <contenedor>`
+
+El password se manda por `stdin`, por eso no aparece literal en el comando final.
 
 ### 4. Local (Este Equipo)
-Ejecuta comandos directamente en el sistema operativo donde corre el panel.
+Ejecuta comandos en la maquina donde corre el panel.
 
 #### Windows Local
-*   **Descubrir Servicios:** `Get-Service | Where-Object {$_.Name -like '*Tomcat*'} ...`
-*   **Descubrir Procesos (IDEs):** `Get-CimInstance Win32_Process -Filter "Name = 'java.exe'" ...` (Busca procesos Java con 'catalina' en la línea de comandos).
-*   **Controlar Servicios:** `Start-Service`, `Stop-Service`, `Restart-Service`.
-*   **Controlar Procesos:** `Stop-Process -Id <PID> -Force` (Solo detener).
+- **Tomcat servicios:** `Get-Service | Where-Object { $_.Name -like '*Tomcat*' -or $_.DisplayName -like '*Tomcat*' }`
+- **Tomcat procesos manuales:** `Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'java.exe' -or $_.Name -eq 'javaw.exe' }`
+- **Node servicios:** `Get-WmiObject Win32_Service | Where-Object { $_.PathName -like '*node.exe*' ... }`
+- **Node procesos:** `Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' }`
+- **Puertos:** `Get-NetTCPConnection -State Listen`
+- **Control servicios:** `Start-Service`, `Stop-Service`, `Restart-Service`
+- **Control procesos PID:** `Stop-Process -Id <PID> -Force`
 
 #### Linux Local
-*   **Controlar Servicios:** `sudo systemctl [start|stop|restart] [servicio]`
+- **Tomcat local:** exploracion aun no esta implementada completamente
+- **Node local:** `ps aux | grep [n]ode`
+- **Puertos Node:** `ss -ltnp | grep <pid> || netstat -ltnp | grep <pid>`
+- **Control servicios:** `sudo systemctl start|stop|restart <servicio>`
 
-### 5. SNMP (Diagnóstico y Configuración)
-Soporte de lectura vía **SNMPv2c** para CPU/RAM/Uptime.
+### 5. Flujo de autodescubrimiento
+El endpoint `/navegacion/scan-host/` soporta `tomcat`, `docker` y `node`.
 
-**Diagnóstico desde el panel (CLI local)**
+- Si el host es `winrm`, el escaneo remoto disponible es `tomcat` y `node`.
+- Si el host es `ssh`, el escaneo remoto disponible es `tomcat`, `node` y `docker`.
+- Si el host es `local`, el flujo usa funciones locales para `tomcat`, `node` y `docker`.
+- Los items devueltos incluyen `nombre`, `display`, `estado`, `puerto`, `tipo_instalacion` y, para Node, metadatos extra como `origen_node`, `controlable_node` y `rol_node`.
+
+### 6. SNMP y monitoreo Celery/SSH
+El panel soporta dos modos de monitoreo visual: **SNMP** y **Celery/SSH**.
+
+**Diagnostico SNMP desde CLI**
 *   Ejecuta una prueba rápida:
     ```bash
     python diag_snmp.py <IP_SERVIDOR> <COMUNIDAD>
@@ -212,10 +257,19 @@ Soporte de lectura vía **SNMPv2c** para CPU/RAM/Uptime.
     sudo ufw allow 161/udp
     ```
 
-**Arquitectura en el Panel**
-- El panel invoca un worker aislado para SNMP: [snmp_worker.py](servidores/snmp_worker.py). Esto evita conflictos de `asyncio` en Windows.
-- La vista usa un wrapper síncrono [services_snmp.py](servidores/services_snmp.py) que lanza el worker vía `subprocess` con timeout controlado.
-- Endpoint de API/UI: `monitor_snmp` ([urls.py](servidores/urls.py), [views.py](servidores/views.py)).
+**Arquitectura SNMP**
+- El panel invoca un worker aislado para SNMP: [snmp_worker.py](file:///d:/proyectosPython/PanelControlTomcat/servidores/snmp_worker.py).
+- La vista usa un wrapper sincronico [services_snmp.py](file:///d:/proyectosPython/PanelControlTomcat/servidores/services_snmp.py) que lanza el worker via `subprocess`.
+- Si SNMP falla, la UI entra en modo simulacion y muestra ayuda contextual.
+
+**Arquitectura Celery/SSH**
+- La vista `monitor_host_celery` lanza la tarea [monitor_host](file:///d:/proyectosPython/PanelControlTomcat/servidores/tasks.py).
+- La tarea usa SSH y ejecuta:
+  - `top -bn1 | grep "Cpu(s)"`
+  - `free -m`
+  - `pgrep -f node`
+  - `pgrep -f tomcat`
+- El resultado se devuelve a la UI para graficar CPU y RAM sin depender de persistencia de metricas.
 
 **Ejecución Manual del Worker**
 ```bash
@@ -224,9 +278,9 @@ python servidores/snmp_worker.py <IP> <COMUNIDAD> [PUERTO]
 python servidores/snmp_worker.py 10.63.17.147 public 161
 ```
 
-**Tiempos de Espera y Fallback**
-- Timeout efectivo ~4 segundos (2s x 1 retry).  
-- Si no hay respuesta, la UI entra en **Modo Simulación**, muestra un aviso desplegable con pasos de configuración y grafica datos de ejemplo.
+**Tiempos de espera y fallback**
+- El wrapper SNMP usa timeout del worker y fallback a modo simulacion si no hay respuesta.
+- La ventana de monitoreo refresca cada 2 segundos y pausa cuando la pestana deja de estar visible.
 
 **Notas Windows**
 - El proyecto aplica automáticamente `WindowsSelectorEventLoopPolicy` en [manage.py](manage.py) para compatibilidad UDP/asyncio.
@@ -243,25 +297,16 @@ python servidores/snmp_worker.py 10.63.17.147 public 161
 
 ---
 
-## 📊 Monitoreo SNMP (Opcional)
+## 📊 Monitoreo (Resumen)
 
-Permite visualizar métricas básicas (CPU, RAM y Uptime) vía SNMPv2c.
-
-### Requisitos en el Servidor Remoto (Windows)
-1. Habilitar el servicio SNMP desde Características de Windows.
-2. Abrir el puerto `161/UDP` en el Firewall de Windows (regla de entrada).
-3. En `services.msc` → Servicio SNMP → Propiedades → Seguridad:
-   - Agregar la comunidad configurada en el panel (por defecto `public`) con permisos de solo lectura.
-   - En “Aceptar paquetes SNMP de estos hosts”, agregar la IP del panel o marcar “Aceptar paquetes SNMP de cualquier host”.
-
-### Configuración en el Panel
-- En la sección “Navegación” → “Registrar/Editar Host”, completar:
-  - Comunidad SNMP (por defecto `public`).
-  - Puerto UDP (por defecto `161`).
-- Accede al monitoreo desde el botón “Monitoreo SNMP” del host en la tabla de Navegación.
-
-### Nota
-Si el servidor no responde a SNMP, el panel mostrará las gráficas en modo demostración y un aviso con instrucciones para habilitar SNMP en el destino.
+- **SNMP**: CPU, RAM, uptime y descripcion del sistema por OID.
+- **Celery/SSH**: CPU y RAM por comandos Linux, mas validacion basica de procesos Node/Tomcat.
+- **Configuracion del host**:
+  - `snmp_community` y `snmp_port` para monitoreo SNMP
+  - `usuario`, `password` y `puerto_conexion` para monitoreo Celery/SSH
+- **Acceso UI**:
+  - `monitoreo/host/<id>/` para SNMP
+  - `monitoreo/host/<id>/celery/` para Celery/SSH
 
 ---
 

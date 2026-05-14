@@ -4,204 +4,143 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-10">
-        <h2 class="mb-4 text-secondary"><i class="fas fa-book me-2"></i>Documentación Técnica</h2>
-        
-        <!-- Sección Docker -->
+        <h2 class="mb-4 text-secondary"><i class="fas fa-book me-2"></i>Documentacion Tecnica</h2>
+
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 text-primary"><i class="fab fa-docker me-2"></i>Comandos Docker (Linux)</h5>
+                <h5 class="card-title mb-0 text-secondary"><i class="fas fa-diagram-project me-2"></i>Resumen del Flujo Real</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted">Estos comandos se ejecutan vía SSH. El usuario configurado debe tener permisos <code>sudo</code>.</p>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 20%">Acción</th>
-                                <th style="width: 40%">Comando Ejecutado</th>
-                                <th style="width: 40%">Descripción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><span class="badge bg-info text-dark">Buscar / Listar</span></td>
-                                <td><code>echo [pass] | sudo -S docker ps --format ...</code></td>
-                                <td>Lista contenedores activos con ID, nombre e imagen.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-secondary">Verificar Estado</span></td>
-                                <td><code>echo [pass] | sudo -S docker ps --filter ...</code></td>
-                                <td>Verifica si un contenedor específico está "Up".</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-success">Iniciar</span></td>
-                                <td><code>echo [pass] | sudo -S docker start [nombre]</code></td>
-                                <td>Inicia un contenedor detenido.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-warning text-dark">Detener</span></td>
-                                <td><code>echo [pass] | sudo -S docker stop [nombre]</code></td>
-                                <td>Detiene un contenedor en ejecución.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-danger">Reiniciar</span></td>
-                                <td><code>echo [pass] | sudo -S docker restart [nombre]</code></td>
-                                <td>Reinicia el contenedor.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <ul class="mb-0 text-muted">
+                    <li>La pantalla de Navegacion trabaja con dos modelos: <code>Host</code> e <code>Instancia</code>.</li>
+                    <li>El autodescubrimiento soporta <strong>tomcat</strong>, <strong>node</strong> y <strong>docker</strong>.</li>
+                    <li>El tipo de conexion define el mecanismo de escaneo y control: <code>winrm</code>, <code>ssh</code> o <code>local</code>.</li>
+                    <li>El monitoreo visual funciona por <strong>SNMP</strong> o por <strong>Celery/SSH</strong> segun la configuracion guardada.</li>
+                    <li>El monitoreo actual solo muestra datos en tiempo real; no depende de guardar metricas en la base.</li>
+                </ul>
             </div>
         </div>
 
-        <!-- Sección Linux Servicios -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 text-dark"><i class="fab fa-linux me-2"></i>Servicios Linux (Systemd)</h5>
+                <h5 class="card-title mb-0 text-primary"><i class="fas fa-magnifying-glass me-2"></i>Escaneo Tomcat</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted">Para instalaciones nativas de Tomcat. Se ejecutan vía SSH.</p>
+                <p class="text-muted">El endpoint de exploracion usa el tipo de conexion del host y devuelve items normalizados con nombre, estado, puerto y tipo de instalacion.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 20%">Acción</th>
-                                <th style="width: 40%">Comando Ejecutado</th>
-                                <th style="width: 40%">Descripción</th>
+                                <th style="width: 18%">Origen</th>
+                                <th style="width: 42%">Comando o script usado</th>
+                                <th style="width: 40%">Que hace</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><span class="badge bg-secondary">Verificar</span></td>
-                                <td><code>systemctl is-active [servicio]</code></td>
-                                <td>Consulta si el servicio está activo.</td>
+                                <td><span class="badge bg-primary">WinRM</span></td>
+                                <td><code>Get-WmiObject Win32_Service | Where-Object { $_.Name -like '*Tomcat*' -or $_.DisplayName -like '*Tomcat*' }</code><br><code>Get-NetTCPConnection -State Listen | Where-Object { $_.OwningProcess -eq $pid }</code></td>
+                                <td>Descubre servicios Tomcat en Windows remoto y trata de asociar puertos escuchando por PID.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-success">Iniciar</span></td>
-                                <td><code>sudo systemctl start [servicio]</code></td>
-                                <td>Arranca el servicio del sistema.</td>
+                                <td><span class="badge bg-dark">SSH</span></td>
+                                <td><code>systemctl is-active tomcat || systemctl is-active tomcat9 || systemctl is-active tomcat10</code><br><code>ss -ltnp | grep java || netstat -ltnp | grep java</code><br><code>ps aux | grep [t]omcat</code></td>
+                                <td>Busca servicios systemd comunes, intenta detectar puertos Java y usa procesos como fallback.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-warning text-dark">Detener</span></td>
-                                <td><code>sudo systemctl stop [servicio]</code></td>
-                                <td>Detiene el servicio.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-danger">Reiniciar</span></td>
-                                <td><code>sudo systemctl restart [servicio]</code></td>
-                                <td>Reinicia el servicio.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sección SNMP -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 text-success"><i class="fas fa-network-wired me-2"></i>Monitoreo SNMP</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted">
-                    Lectura de métricas (CPU, RAM, Uptime) usando SNMPv2c. El panel invoca un worker aislado para evitar conflictos de <code>asyncio</code> en Windows.
-                </p>
-                <p class="text-muted mb-2">
-                    <strong>Configuración en el panel:</strong> en la sección <em>Navegación</em>, registrar o editar un <strong>Host</strong> y completar:
-                    comunidad SNMP (por defecto <code>public</code>) y puerto UDP (por defecto <code>161</code>). El monitoreo se abre desde el botón
-                    <em>Monitoreo SNMP</em> asociado a cada host.
-                </p>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 20%">Acción</th>
-                                <th style="width: 40%">Comando Ejecutado</th>
-                                <th style="width: 40%">Descripción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><span class="badge bg-info text-dark">Diagnóstico Rápido</span></td>
-                                <td><code>python diag_snmp.py &lt;IP&gt; &lt;COMUNIDAD&gt;</code></td>
-                                <td>Prueba GET a <code>1.3.6.1.2.1.1.1.0</code> (sysDescr) con timeout y reporte de errores.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-secondary">Worker Manual</span></td>
-                                <td><code>python servidores/snmp_worker.py &lt;IP&gt; &lt;COMUNIDAD&gt; [PUERTO]</code></td>
-                                <td>Ejecuta el worker asíncrono que usa el panel para recolectar métricas.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-primary">Windows: Firewall</span></td>
-                                <td><code>New-NetFirewallRule -DisplayName \"SNMP (UDP 161)\" -Direction Inbound -Protocol UDP -LocalPort 161 -Action Allow</code></td>
-                                <td>Habilita el puerto <strong>161/UDP</strong> en el servidor remoto.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-primary">Windows: SNMP</span></td>
-                                <td><code>Add-WindowsCapability -Online -Name 'SNMP.Client~~~~0.0.1.0'</code></td>
-                                <td>Instala el cliente/servicio SNMP (según edición). Configurar comunidad y hosts en <code>services.msc</code>.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-dark">Linux: Instalar</span></td>
-                                <td><code>sudo apt install snmpd && sudo systemctl restart snmpd</code></td>
-                                <td>Instala y reinicia el servicio. Configurar <code>rocommunity</code> en <code>/etc/snmp/snmpd.conf</code>.</td>
-                            </tr>
-                            <tr>
-                                <td><span class="badge bg-dark">Linux: Firewall</span></td>
-                                <td><code>sudo ufw allow 161/udp</code></td>
-                                <td>Abre el puerto <strong>161/UDP</strong> en el servidor remoto.</td>
+                                <td><span class="badge bg-info text-dark">Local</span></td>
+                                <td><code>Get-Service | Where-Object { $_.Name -like '*Tomcat*' -or $_.DisplayName -like '*Tomcat*' }</code><br><code>Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'java.exe' -or $_.Name -eq 'javaw.exe' }</code></td>
+                                <td>En Windows local detecta servicios Tomcat y procesos Java con argumentos de catalina.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="small text-muted">
-                    <strong>OIDs usados:</strong>
-                    <code>1.3.6.1.2.1.1.1.0</code> (sysDescr),
-                    <code>1.3.6.1.2.1.1.3.0</code> (sysUpTime),
-                    <code>1.3.6.1.2.1.25.3.3.1.2</code> (hrProcessorLoad),
-                    <code>1.3.6.1.2.1.25.2.2.0</code> (hrMemorySize),
-                    <code>1.3.6.1.4.1.2021.4.6.0</code> (memAvailReal).
-                    Si no hay respuesta, la UI activa modo <em>Simulación</em> con guía de solución.
+                    El puerto HTTP se toma del item detectado; si no viene, se usa un fallback basado en puertos comunes como <code>8080</code>, <code>80</code>, <code>8181</code>, <code>8081</code>, <code>8000</code> y <code>3000</code>.
                 </div>
             </div>
         </div>
 
-        <!-- Sección Windows -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 text-primary"><i class="fab fa-windows me-2"></i>Servicios Windows (WinRM)</h5>
+                <h5 class="card-title mb-0 text-success"><i class="fab fa-node-js me-2"></i>Escaneo Node.js</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted">Comandos ejecutados vía WinRM (Remoto) usando PowerShell.</p>
+                <p class="text-muted">El escaneo Node clasifica hallazgos como servicio o proceso, intenta inferir puertos y agrega metadatos como <code>origen_node</code>, <code>controlable_node</code> y <code>rol_node</code>.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 20%">Acción</th>
-                                <th style="width: 40%">Comando PowerShell</th>
-                                <th style="width: 40%">Descripción</th>
+                                <th style="width: 18%">Origen</th>
+                                <th style="width: 42%">Comando o script usado</th>
+                                <th style="width: 40%">Que hace</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><span class="badge bg-secondary">Verificar</span></td>
-                                <td><code>Get-Service -Name '[servicio]'</code></td>
-                                <td>Obtiene el objeto de servicio y su estado.</td>
+                                <td><span class="badge bg-primary">WinRM</span></td>
+                                <td><code>Get-WmiObject Win32_Service | Where-Object { $_.PathName -like '*node.exe*' ... }</code><br><code>Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' }</code><br><code>Get-NetTCPConnection -State Listen</code></td>
+                                <td>Detecta servicios Windows que ejecutan Node, procesos <code>node.exe</code>, puertos por PID y relaciones padre/hijo.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-success">Iniciar</span></td>
-                                <td><code>Start-Service -InputObject $service</code></td>
-                                <td>Inicia el servicio de Windows.</td>
+                                <td><span class="badge bg-dark">SSH</span></td>
+                                <td><code>pm2 jlist 2&gt;/dev/null || true</code><br><code>systemctl list-units --type=service --all | grep -i node || true</code><br><code>ps aux | grep [n]ode</code><br><code>ss -ltnp | grep &lt;pid&gt; || netstat -ltnp | grep &lt;pid&gt;</code></td>
+                                <td>Descubre procesos administrados por PM2, servicios systemd y procesos sueltos, intentando elegir el puerto mas util.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-warning text-dark">Detener</span></td>
-                                <td><code>Stop-Service -InputObject $service -Force</code></td>
-                                <td>Detiene forzosamente el servicio.</td>
+                                <td><span class="badge bg-info text-dark">Local</span></td>
+                                <td><code>Get-WmiObject Win32_Service | Where-Object { $_.PathName -like '*node.exe*' ... }</code><br><code>Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'node.exe' }</code><br><code>Get-NetTCPConnection -State Listen</code></td>
+                                <td>En Windows local detecta servicios y procesos Node y trata de clasificar si parecen API o worker.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="small text-muted">
+                    Prioridad de puertos para Node: <code>4000</code>, <code>9005</code>, <code>9007</code>, <code>3000</code>, <code>8080</code>, <code>8000</code>, <code>5000</code>, <code>80</code> y <code>8888</code>.
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-primary"><i class="fab fa-docker me-2"></i>Escaneo y Control Docker</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Docker se explora en modo local o por SSH. El flujo remoto usa <code>sudo -S</code> y lista tambien contenedores detenidos con <code>-a</code>.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 18%">Accion</th>
+                                <th style="width: 42%">Comando real</th>
+                                <th style="width: 40%">Descripcion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-info text-dark">Explorar SSH</span></td>
+                                <td><code>sudo -S docker ps -a --format '{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}'</code></td>
+                                <td>Lista todos los contenedores remotos para agregarlos como instancias al host seleccionado.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-danger">Reiniciar</span></td>
-                                <td><code>Restart-Service -InputObject $service -Force</code></td>
-                                <td>Reinicia el servicio.</td>
+                                <td><span class="badge bg-secondary">Estado SSH</span></td>
+                                <td><code>sudo -S docker ps -a --filter 'name=&lt;contenedor&gt;' --format '{{.Status}}'</code></td>
+                                <td>Determina si un contenedor esta activo o detenido.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">Control SSH</span></td>
+                                <td><code>sudo -S docker start|stop|restart &lt;contenedor&gt;</code></td>
+                                <td>Control remoto de contenedores por SSH.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-info text-dark">Explorar Local</span></td>
+                                <td><code>docker ps -a --format '{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}'</code></td>
+                                <td>Lista contenedores del equipo donde corre el panel.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">Puerto Local</span></td>
+                                <td><code>docker ps --filter 'name=&lt;contenedor&gt;' --format '{{.Ports}}'</code></td>
+                                <td>Intenta detectar el puerto publico de un contenedor local para corregir la verificacion HTTP.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -209,41 +148,40 @@
             </div>
         </div>
 
-        <!-- Sección Local -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 text-info"><i class="fas fa-laptop-code me-2"></i>Servicios Locales (Este Equipo)</h5>
+                <h5 class="card-title mb-0 text-dark"><i class="fas fa-play-circle me-2"></i>Comandos de Verificacion y Control</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted">Gestión directa sobre la máquina donde corre el panel. Requiere permisos de Administrador.</p>
-                <div class="alert alert-info py-2 small">
-                    <i class="fas fa-info-circle me-1"></i>
-                    <strong>Nota:</strong> Para procesos Java lanzados manualmente (IDEs), solo se permite la acción <strong>Detener</strong> usando el PID.
-                </div>
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 20%">Contexto</th>
-                                <th style="width: 40%">Comando / Lógica</th>
-                                <th style="width: 40%">Descripción</th>
+                                <th style="width: 18%">Contexto</th>
+                                <th style="width: 42%">Comando real</th>
+                                <th style="width: 40%">Descripcion</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><span class="badge bg-primary">Descubrimiento</span></td>
-                                <td><code>Get-CimInstance Win32_Process ...</code></td>
-                                <td>Busca procesos <code>java.exe</code>/<code>javaw.exe</code> con argumentos de Tomcat (catalina.base).</td>
+                                <td><span class="badge bg-primary">WinRM</span></td>
+                                <td><code>Get-Service -Name '&lt;servicio&gt;' | Select-Object -ExpandProperty Status</code><br><code>Start-Service -InputObject $service</code><br><code>Stop-Service -InputObject $service -Force</code><br><code>Restart-Service -InputObject $service -Force</code></td>
+                                <td>Verifica y controla servicios Windows remotos. Cuando no hay nombre exacto usa fallback por patron <code>*Tomcat*</code>.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-secondary">Servicios Win</span></td>
-                                <td><code>Get-Service | Where-Object ...</code></td>
-                                <td>Busca servicios instalados que contengan "Tomcat" en el nombre.</td>
+                                <td><span class="badge bg-dark">SSH</span></td>
+                                <td><code>systemctl is-active tomcat || systemctl is-active tomcat9 || systemctl is-active tomcat10</code><br><code>sudo systemctl start|stop|restart &lt;servicio&gt;</code></td>
+                                <td>Verifica y controla servicios Linux nativos.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-danger">Detener PID</span></td>
-                                <td><code>Stop-Process -Id [PID] -Force</code></td>
-                                <td>Mata un proceso específico detectado por su ID.</td>
+                                <td><span class="badge bg-info text-dark">Local Windows</span></td>
+                                <td><code>Get-Service -Name '&lt;servicio&gt;'</code><br><code>Start-Service -Name '&lt;servicio&gt;'</code><br><code>Stop-Service -Name '&lt;servicio&gt;'</code><br><code>Restart-Service -Name '&lt;servicio&gt;'</code><br><code>Stop-Process -Id &lt;PID&gt; -Force</code></td>
+                                <td>Servicios locales en Windows y detencion de procesos detectados por PID.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-secondary">Chequeo de puerto</span></td>
+                                <td><code>check_tcp_port(ip, puerto)</code></td>
+                                <td>Despues de validar que el servicio esta arriba, el panel confirma si el puerto HTTP realmente responde.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -251,49 +189,82 @@
             </div>
         </div>
 
-        <!-- Sección WinRM TrustedHosts (Comandos) -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white py-3">
-                <h5 class="card-title mb-0 text-dark"><i class="fas fa-user-shield me-2"></i>WinRM TrustedHosts (Comandos)</h5>
+                <h5 class="card-title mb-0 text-success"><i class="fas fa-network-wired me-2"></i>Monitoreo SNMP y Celery/SSH</h5>
             </div>
             <div class="card-body">
-                <p class="text-muted">Comandos base para consultar y establecer TrustedHosts en el cliente Windows.</p>
+                <p class="text-muted">La ventana de monitoreo se reutiliza para SNMP y para Celery/SSH. El modo activo se controla desde <strong>Herramientas</strong>.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 20%">Acción</th>
-                                <th style="width: 40%">Comando PowerShell</th>
-                                <th style="width: 40%">Descripción</th>
+                                <th style="width: 18%">Modo</th>
+                                <th style="width: 42%">Comando o mecanismo</th>
+                                <th style="width: 40%">Descripcion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-success">SNMP</span></td>
+                                <td><code>python diag_snmp.py &lt;IP&gt; &lt;COMUNIDAD&gt;</code><br><code>python servidores/snmp_worker.py &lt;IP&gt; &lt;COMUNIDAD&gt; [PUERTO]</code></td>
+                                <td>Usa un worker aislado para consultar <code>sysDescr</code>, <code>sysUpTime</code>, CPU y memoria por SNMPv2c. Si falla, la UI entra a modo simulacion.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">Celery/SSH</span></td>
+                                <td><code>top -bn1 | grep "Cpu(s)"</code><br><code>free -m</code><br><code>pgrep -f node</code><br><code>pgrep -f tomcat</code></td>
+                                <td>La tarea Celery se conecta por SSH, extrae CPU y RAM y valida si hay procesos Node o Tomcat. Los datos se devuelven a la UI sin persistencia de metricas.</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">OIDs SNMP</span></td>
+                                <td><code>1.3.6.1.2.1.1.1.0</code>, <code>1.3.6.1.2.1.1.3.0</code>, <code>1.3.6.1.2.1.25.3.3.1.2</code>, <code>1.3.6.1.2.1.25.2.2.0</code>, <code>1.3.6.1.4.1.2021.4.6.0</code></td>
+                                <td>Descripcion del sistema, uptime, carga de CPU, memoria total y memoria disponible.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="small text-muted">
+                    Para SNMP en Windows remoto normalmente se requiere abrir <code>161/UDP</code> y configurar comunidad en <code>services.msc</code>. En Linux remoto suele bastar con instalar <code>snmpd</code>, definir <code>rocommunity</code> y reiniciar el servicio.
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0 text-dark"><i class="fas fa-user-shield me-2"></i>TrustedHosts WinRM</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">La seccion Herramientas usa PowerShell local para consultar y modificar TrustedHosts cuando el panel corre en Windows fuera de Docker.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 18%">Accion</th>
+                                <th style="width: 42%">Comando PowerShell</th>
+                                <th style="width: 40%">Descripcion</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td><span class="badge bg-info text-dark">Consultar</span></td>
                                 <td><code>(Get-Item WSMan:\localhost\Client\TrustedHosts).Value</code></td>
-                                <td>Devuelve la lista actual de hosts de confianza.</td>
+                                <td>Lee la lista actual de hosts confiables.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-success">Establecer lista</span></td>
-                                <td><code>Set-Item WSMan:\localhost\Client\TrustedHosts -Value "10.63.17.232" -Force</code></td>
-                                <td>Reemplaza la lista con el/los hosts indicados (para varios: "host1,host2").</td>
+                                <td><span class="badge bg-success">Agregar o fijar</span></td>
+                                <td><code>Set-Item WSMan:\localhost\Client\TrustedHosts -Value "host1,host2" -Force</code></td>
+                                <td>Guarda una lista explicita de hosts autorizados.</td>
                             </tr>
                             <tr>
-                                <td><span class="badge bg-danger">Activar comodín</span></td>
+                                <td><span class="badge bg-danger">Comodin</span></td>
                                 <td><code>Set-Item WSMan:\localhost\Client\TrustedHosts -Value "*" -Force</code></td>
-                                <td>Permite cualquier host (no recomendado).</td>
+                                <td>Permite cualquier host; util solo para pruebas.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <div class="small text-muted">
-                    <i class="fas fa-info-circle me-1"></i> Para una gestión interactiva, usa la sección <strong>Herramientas</strong> en el menú.
-                </div>
             </div>
         </div>
-
     </div>
 </div>
-
-<script></script>
 {% endblock %}
